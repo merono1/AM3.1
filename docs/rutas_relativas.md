@@ -14,6 +14,7 @@ La aplicación ahora utiliza un sistema centralizado de configuración que:
 
 - `config.py`: Contiene todas las definiciones de rutas y configuraciones
 - `main.py`: Utiliza la configuración centralizada
+- `app/config.py`: Configuración específica para los componentes de Flask
 - `.env`: Contiene variables personalizables para cada equipo
 
 ## Personalización por equipo
@@ -68,6 +69,36 @@ ruta_cliente = os.path.join("C:/Clientes", nombre_cliente)
 ruta_cliente = os.path.join(CONFIG['clientes_dir'], nombre_cliente)
 ```
 
+## Sistema de rutas para la base de datos
+
+La aplicación utiliza un sistema flexible para la conexión a la base de datos:
+
+### Configuración para SQLite (local)
+
+```python
+# Configuración en .env para SQLite
+DB_PATH=app/data/app.db
+```
+
+En este caso, la ruta se resuelve de forma relativa al directorio base de la aplicación.
+
+### Configuración para PostgreSQL (Neon)
+
+```python
+# Configuración en .env para PostgreSQL
+DATABASE_URL=postgresql://usuario:contraseña@host/basedatos
+```
+
+Si se proporciona DATABASE_URL, la aplicación usará PostgreSQL en lugar de SQLite.
+
+## Implementación en la aplicación Flask
+
+La configuración de rutas para Flask se gestiona en `app/config.py`, que:
+
+1. Detecta el directorio base de la aplicación usando `Path(__file__).resolve().parent.parent`
+2. Lee las variables de entorno para configurar las rutas
+3. Crea los directorios necesarios si no existen
+
 ## Ventajas
 
 1. **Portabilidad**: La aplicación funciona sin cambios en cualquier equipo
@@ -75,8 +106,25 @@ ruta_cliente = os.path.join(CONFIG['clientes_dir'], nombre_cliente)
 3. **Adaptabilidad**: Cada usuario puede configurar rutas según su sistema sin tocar el código
 4. **Robustez**: Los directorios necesarios se crean automáticamente
 
+## Transición entre entornos
+
+Para cambiar entre entornos de desarrollo (local) y producción (remoto):
+
+1. Para usar SQLite localmente, configura solo DB_PATH en el archivo .env
+2. Para usar PostgreSQL (recomendado para producción), configura DATABASE_URL en .env
+3. La aplicación prioriza PostgreSQL si ambas configuraciones están presentes
+
+## Debugging y solución de problemas
+
+Si encuentras problemas relacionados con rutas:
+
+1. Verifica que existe el archivo `.env` en el directorio raíz de la aplicación
+2. Comprueba que las rutas en `.env` son válidas para tu equipo
+3. Si modificas las rutas, reinicia la aplicación para que los cambios surtan efecto
+
 ## Recomendaciones
 
 - Nunca uses rutas absolutas codificadas directamente en el código
 - Si necesitas una nueva ruta configurable, añádela a `CONFIG` en `config.py`
 - Para nuevos módulos, importa siempre las configuraciones necesarias desde `config.py`
+- Utiliza el script `test_neon_connection.py` para verificar la conexión a PostgreSQL
