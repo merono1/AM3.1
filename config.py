@@ -71,7 +71,7 @@ def ensure_client_dir_exists():
 # Inicialización al importar el módulo
 ensure_dirs_exist()
 ensure_client_dir_exists()
-db_dir = ensure_db_dir_exists()
+sqlite_db_dir = ensure_db_dir_exists()  # Renombrado para evitar conflictos con app/db
 
 # Función para obtener rutas absolutas
 def get_abs_path(relative_path):
