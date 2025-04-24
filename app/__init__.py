@@ -10,8 +10,17 @@ import time
 
 from app.config import config
 
-# Inicialización de extensiones
-db = SQLAlchemy()
+# Inicialización de extensiones - Definir una variable temporal primero para evitar conflictos
+_db_engine = SQLAlchemy()
+db = _db_engine  # Usar una referencia clara para evitar que sea sobrescrita
+
+# Asegurar que db es un objeto SQLAlchemy y no una cadena
+if not hasattr(db, 'init_app'):
+    # Si db es una cadena, redefine la variable
+    import sys
+    this_module = sys.modules[__name__]
+    db = SQLAlchemy()  # Reemplazar con un nuevo objeto SQLAlchemy
+
 migrate = Migrate()
 csrf = CSRFProtect()
 
@@ -33,9 +42,6 @@ def create_app(config_name='default'):
     
     if using_postgres:
         print(f"✅ Usando PostgreSQL: {app.config['SQLALCHEMY_DATABASE_URI'].split('@')[1] if '@' in app.config['SQLALCHEMY_DATABASE_URI'] else 'configurada'}")
-        
-        # Los timeouts y opciones de conexión ya están configurados en app/config.py
-        # No es necesario crear un engine personalizado aquí
         
         # Verificar si la base de datos está en modo sleep
         try:
@@ -101,6 +107,11 @@ def create_app(config_name='default'):
                 print(f"❌ Error al crear archivo de base de datos: {e}")
     
     # Inicializar extensiones con la app
+    # Asegurar nuevamente que db es un objeto SQLAlchemy válido
+    if not hasattr(db, 'init_app'):
+        global db
+        db = SQLAlchemy()
+    
     db.init_app(app)
     migrate.init_app(app, db)
     csrf.init_app(app)
