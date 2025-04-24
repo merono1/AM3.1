@@ -22,6 +22,19 @@ class Config:
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
+    # Configuración de timeouts para PostgreSQL
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_timeout': 30,  # 30 segundos
+        'pool_recycle': 1800,  # 30 minutos
+        'pool_pre_ping': True,  # Verificación de conexión antes de usarla
+        'pool_size': 5,  # Tamaño del pool
+        'max_overflow': 10,  # Conexiones adicionales si es necesario
+        'connect_args': {
+            'connect_timeout': 10,  # 10 segundos para timeout de conexión
+            'application_name': 'AM3.1'  # Nombre de la aplicación en el servidor
+        }
+    }
+    
     # Asegurar que el directorio de la base de datos existe
     @staticmethod
     def init_app(app):
@@ -41,6 +54,19 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     """Configuración para entorno de producción."""
     DEBUG = False
+    
+    # Configuraciones específicas para producción
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_timeout': 60,  # Timeout más largo en producción
+        'pool_recycle': 3600,  # Reciclar conexiones cada hora
+        'pool_pre_ping': True,
+        'pool_size': 10,  # Mayor pool en producción
+        'max_overflow': 20,
+        'connect_args': {
+            'connect_timeout': 15,
+            'application_name': 'AM3.1-Production'
+        }
+    }
     
     # En producción, recomendar usar PostgreSQL
     @classmethod
