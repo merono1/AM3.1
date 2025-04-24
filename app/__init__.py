@@ -1,4 +1,3 @@
-# app/__init__.py
 import os
 import sqlite3
 from flask import Flask, render_template
@@ -6,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from pathlib import Path
+import sys
 
 from app.config import config
 
@@ -27,34 +27,48 @@ def create_app(config_name='default'):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
     
-    # Determinar tipo de base de datos
+    # Verifica si usamos PostgreSQL
     using_postgres = 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI']
     
     if using_postgres:
         print(f"✅ Usando PostgreSQL: {app.config['SQLALCHEMY_DATABASE_URI'].split('@')[1] if '@' in app.config['SQLALCHEMY_DATABASE_URI'] else 'configurada'}")
-    else:
-        # Para SQLite, asegurar que existe el directorio de datos y el archivo de base de datos
-        db_path = Path(app.config['DB_PATH'])
-        os.makedirs(db_path.parent, exist_ok=True)
         
-        # Verificar acceso a la base de datos SQLite antes de inicializar SQLAlchemy
+        # Verificar conexión a PostgreSQL antes de inicializar SQLAlchemy
         try:
-            # Intentar crear/acceder al archivo de SQLite directamente
-            sqlite_conn = sqlite3.connect(db_path)
-            sqlite_conn.close()
-            print(f"✅ Conexión a SQLite verificada: {db_path}")
+            import psycopg2
+            # Extraer datos de la URI de SQLAlchemy
+            pg_uri = app.config['SQLALCHEMY_DATABASE_URI']
+            pg_uri = pg_uri.replace('postgresql://', '')
+            user_pass, host_db = pg_uri.split('@', 1)
+            host, db = host_db.split('/', 1)
+            user, password = user_pass.split(':', 1)
+            
+            # Conectar con un timeout de 5 segundos
+            print("Conectando a PostgreSQL (timeout: 5s)...")
+            conn = psycopg2.connect(
+                dbname=db,
+                user=user,
+                password=password,
+                host=host,
+                connect_timeout=5
+            )
+            conn.close()
+            print("✅ Conexión a PostgreSQL verificada")
+        except ImportError:
+            print("❌ Error: psycopg2 no está instalado")
+            print("   Instala psycopg2-binary con: pip install psycopg2-binary")
+            sys.exit(1)
         except Exception as e:
-            print(f"❌ Error al conectar a SQLite: {e}")
-            print(f"Intentando crear directorio: {db_path.parent}")
-            try:
-                # Intento más agresivo de crear el directorio y el archivo
-                db_path.parent.mkdir(parents=True, exist_ok=True)
-                # Intentar crear el archivo manualmente
-                with open(db_path, 'a'):
-                    pass
-                print(f"✅ Archivo de base de datos creado manualmente")
-            except Exception as e:
-                print(f"❌ Error al crear archivo de base de datos: {e}")
+            print(f"❌ Error al conectar a PostgreSQL: {e}")
+            print("   La aplicación está configurada para usar únicamente PostgreSQL.")
+            print("   Verifica que la base de datos en Neon esté activa y las credenciales sean correctas.")
+            print("   Si el problema persiste, contacta al soporte de Neon.")
+            sys.exit(1)
+    else:
+        # La aplicación debe usar PostgreSQL exclusivamente
+        print("❌ Error: La aplicación está configurada para usar únicamente PostgreSQL")
+        print("   Configura DATABASE_URL en el archivo .env")
+        sys.exit(1)
     
     # Inicializar extensiones con la app
     db.init_app(app)
@@ -98,6 +112,8 @@ def create_app(config_name='default'):
                 print(f" - {table}")
         except Exception as e:
             print(f"❌ Error al crear tablas: {e}")
+            print("   Verifica que la base de datos esté correctamente configurada.")
+            sys.exit(1)
     
     # Registrar blueprints
     from app.routes import register_blueprints

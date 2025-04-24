@@ -1,45 +1,34 @@
 # main.py
 import os
-import sqlite3
+import sys
 from dotenv import load_dotenv
 from pathlib import Path
 
 # Cargar variables de entorno desde .env
 load_dotenv()
 
-# Verificar tipo de base de datos y configuración
-using_postgres = os.environ.get('DATABASE_URL') is not None
+# Verificar que DATABASE_URL esté configurado
+if not os.environ.get('DATABASE_URL'):
+    print("❌ ERROR: No se ha configurado DATABASE_URL en el archivo .env")
+    print("   La aplicación está configurada para usar SOLO PostgreSQL en Neon.")
+    print("   Asegúrate de que DATABASE_URL esté correctamente definida en el archivo .env")
+    sys.exit(1)
 
-# Configuración para SQLite si no estamos usando PostgreSQL
-db_path = os.environ.get('DB_PATH', 'app/data/app.db') if not using_postgres else None
-db_dir = Path(db_path).parent if db_path else None
+# Verificar que psycopg2 esté instalado
+try:
+    import psycopg2
+except ImportError:
+    print("❌ ERROR: No se ha encontrado el módulo 'psycopg2'")
+    print("   Este módulo es necesario para conectarse a PostgreSQL.")
+    print("   Instálalo con: pip install psycopg2-binary")
+    sys.exit(1)
 
 # Variable para controlar si ya se ejecutó la inicialización
 is_second_run = os.environ.get('FLASK_RUN_FROM_RELOAD') == '1'
 
 if not is_second_run:
     print("=== Verificación de base de datos ===")
-    
-    if using_postgres:
-        print(f"✅ Usando PostgreSQL: {os.environ.get('DATABASE_URL', '').split('@')[1] if '@' in os.environ.get('DATABASE_URL', '') else 'configurada'}")
-    else:
-        print(f"Ruta de la base de datos SQLite: {db_path}")
-        print(f"Directorio: {db_dir}")
-        
-        # Asegurar que el directorio existe para SQLite
-        try:
-            os.makedirs(db_dir, exist_ok=True)
-            print(f"✅ Directorio verificado/creado")
-        except Exception as e:
-            print(f"❌ Error al crear directorio: {e}")
-        
-        # Verificar permisos para SQLite
-        try:
-            with open(db_path, 'a'):
-                pass
-            print(f"✅ Archivo de base de datos accesible/creado")
-        except Exception as e:
-            print(f"❌ Error al acceder al archivo de base de datos: {e}")
+    print(f"✅ Usando PostgreSQL: {os.environ.get('DATABASE_URL', '').split('@')[1] if '@' in os.environ.get('DATABASE_URL', '') else 'configurada'}")
 
 # Ahora importamos y creamos la aplicación
 from app import create_app
@@ -52,10 +41,6 @@ def check_db():
     from flask import render_template_string
     import os
     
-    # Determinar si usamos PostgreSQL o SQLite
-    using_postgres = os.environ.get('DATABASE_URL') is not None
-    db_path_display = db_path if db_path else 'N/A (usando PostgreSQL)'
-    
     try:
         # Obtener las tablas disponibles utilizando SQLAlchemy
         from flask import current_app
@@ -66,8 +51,7 @@ def check_db():
         tables = inspector.get_table_names()
         tables_html = "\n".join([f"<li>{table}</li>" for table in tables])
         
-        connection_type = "PostgreSQL" if using_postgres else "SQLite"
-        db_info = os.environ.get('DATABASE_URL', '').split('@')[1] if using_postgres and '@' in os.environ.get('DATABASE_URL', '') else db_path_display
+        db_info = os.environ.get('DATABASE_URL', '').split('@')[1] if '@' in os.environ.get('DATABASE_URL', '') else 'configurada'
         
         return render_template_string("""<!DOCTYPE html>
             <html>
@@ -79,10 +63,10 @@ def check_db():
                 <div class="container py-5">
                     <div class="card shadow">
                         <div class="card-header bg-success text-white">
-                            <h4 class="mb-0">✅ Conexión a Base de Datos Exitosa</h4>
+                            <h4 class="mb-0">✅ Conexión a PostgreSQL Exitosa</h4>
                         </div>
                         <div class="card-body">
-                            <p class="lead">Se ha conectado correctamente a la base de datos {{ connection_type }}.</p>
+                            <p class="lead">Se ha conectado correctamente a la base de datos PostgreSQL en Neon.</p>
                             <p><strong>Conexión:</strong> {{ db_info }}</p>
                             
                             <h5 class="mt-4">Tablas disponibles:</h5>
@@ -98,9 +82,9 @@ def check_db():
                 </div>
             </body>
             </html>
-        """, connection_type=connection_type, db_info=db_info, tables_html=tables_html)
+        """, db_info=db_info, tables_html=tables_html)
     except Exception as e:
-        connection_type = "PostgreSQL" if using_postgres else "SQLite"
+        database_info = os.environ.get('DATABASE_URL', '').split('@')[1] if '@' in os.environ.get('DATABASE_URL', '') else 'configurada'
         
         return render_template_string("""<!DOCTYPE html>
             <html>
@@ -112,10 +96,10 @@ def check_db():
                 <div class="container py-5">
                     <div class="card shadow">
                         <div class="card-header bg-danger text-white">
-                            <h4 class="mb-0">❌ Error de Conexión a Base de Datos</h4>
+                            <h4 class="mb-0">❌ Error de Conexión a PostgreSQL</h4>
                         </div>
                         <div class="card-body">
-                            <p class="lead">No se ha podido conectar a la base de datos {{ connection_type }}.</p>
+                            <p class="lead">No se ha podido conectar a la base de datos PostgreSQL en Neon.</p>
                             <p><strong>Conexión:</strong> {{ db_info }}</p>
                             
                             <div class="alert alert-danger">
@@ -124,16 +108,10 @@ def check_db():
                             
                             <h5 class="mt-4">Soluciones posibles:</h5>
                             <ol>
-                                {% if using_postgres %}
                                 <li>Verifica que la cadena de conexión DATABASE_URL en el archivo .env es correcta.</li>
-                                <li>Asegúrate de que el servidor PostgreSQL está en funcionamiento.</li>
+                                <li>Asegúrate de que el módulo psycopg2-binary está instalado.</li>
                                 <li>Comprueba si hay restricciones de IP o si necesitas VPN para acceder al servidor.</li>
-                                <li>Ejecuta <code>python reset_db.bat</code> para recrear la base de datos.</li>
-                                {% else %}
-                                <li>Verifica que el directorio existe y tiene permisos de escritura.</li>
-                                <li>Ejecuta <code>python reset_db_simple.py</code> para recrear la base de datos desde cero.</li>
-                                <li>Asegúrate de que la variable <code>DB_PATH</code> en el archivo <code>.env</code> es correcta.</li>
-                                {% endif %}
+                                <li>Verifica que las credenciales (usuario/contraseña) son correctas.</li>
                             </ol>
                             
                             <div class="mt-4">
@@ -144,7 +122,7 @@ def check_db():
                 </div>
             </body>
             </html>
-        """, connection_type=connection_type, db_info=db_info, using_postgres=using_postgres, error=str(e))
+        """, db_info=database_info, error=str(e))
 
 if __name__ == '__main__':
     if not is_second_run:

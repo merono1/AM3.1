@@ -1,13 +1,47 @@
 # AM3.1 - Migraciones y Configuración
 
-## 1. Migración de Hojas de Trabajo
+## 1. Sistema de Rutas Relativas
 
-### 1.1 Cambio Estructural
+### 1.1 Problema
+La aplicación utilizaba rutas absolutas, lo que dificultaba su portabilidad entre diferentes equipos.
+
+### 1.2 Solución Implementada
+1. **Archivo `config.py` centralizado**:
+   - Define todas las rutas como relativas usando `pathlib.Path`
+   - Carga variables de `.env` para personalización
+   - Ofrece funciones utilitarias para directorios
+
+2. **Modificaciones clave**:
+   - `main.py`: Actualizado para usar `config.py`
+   - `.env.example`: Añadidas variables para rutas
+   - Documentación en `docs/rutas_relativas.md`
+
+### 1.3 Ventajas
+- Portabilidad entre diferentes sistemas
+- Centralización de configuraciones
+- Creación automática de directorios necesarios
+- Soporte mejorado para PostgreSQL/SQLite
+
+### 1.4 Uso Básico
+```python
+# Importar configuración
+from config import DB_PATH, APP_DIR, ensure_directories
+
+# Asegurar que existan directorios
+ensure_directories()
+
+# Usar rutas relativas
+archivo_config = APP_DIR / 'config' / 'settings.json'
+```
+
+## 2. Migración de Hojas de Trabajo
+
+### 2.1 Cambio Estructural
 - **Cambio**: Hojas de trabajo vinculadas a presupuestos (antes a proyectos)
 - **Scripts**: `migrate_hojas_trabajo_v2.py`, `update_constraint_hojas_trabajo.py`
 - **Batch**: `migrar_hojas_trabajo.bat`, `actualizar_restricciones.bat`
 
-### 1.2 Problemas Resueltos
+### 2.2 Problemas Resueltos
 1. **Relación obsoleta en Proyecto**:
    - Eliminada línea `hojas_trabajo = db.relationship('HojaTrabajo', back_populates='proyecto', cascade='all, delete-orphan')`
    - Archivo modificado: `app/models/proyecto.py`
@@ -29,7 +63,7 @@
    - Modificada la columna `id_proyecto` para permitir NULL
    - Verificación de que `id_presupuesto` tenga restricción NOT NULL
 
-### 1.3 Pasos para Migrar
+### 2.3 Pasos para Migrar
 1. Hacer copia de seguridad: `copy app\data\app.db app\data\app.db.backup`
 2. Ejecutar: `migrar_hojas_trabajo.bat`
 3. Verificar la migración

@@ -1,6 +1,8 @@
 # app/config.py
 import os
 from pathlib import Path
+import sys
+import time
 
 # Obtener el directorio base del proyecto
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -10,49 +12,64 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'clave_predeterminada_segura_para_desarrollo'
     
     # Configuración de base de datos
-    # Prioridad a PostgreSQL si está configurado, sino usar SQLite
     DATABASE_URL = os.environ.get('DATABASE_URL')
     DB_PATH = os.environ.get('DB_PATH') or str(BASE_DIR / 'app' / 'data' / 'app.db')
+    ENABLE_SQLITE_FALLBACK = os.environ.get('ENABLE_SQLITE_FALLBACK', 'false').lower() == 'true'
     
-    # Usar PostgreSQL si está configurado, sino usar SQLite
+    # Determinar URI de base de datos
     if DATABASE_URL:
-        SQLALCHEMY_DATABASE_URI = DATABASE_URL
+        # Intentar usar PostgreSQL
+        try:
+            # Importar psycopg2 para verificar que está instalado
+            import psycopg2
+            
+            # Verificar conexión si estamos en modo verbose
+            if os.environ.get('CHECK_DB_CONNECTION', 'false').lower() == 'true':
+                print(f"Verificando conexión a PostgreSQL...")
+                start_time = time.time()
+                conn = psycopg2.connect(DATABASE_URL, connect_timeout=5)
+                elapsed = time.time() - start_time
+                print(f"✅ Conexión exitosa a PostgreSQL ({elapsed:.2f}s)")
+                conn.close()
+            
+            SQLALCHEMY_DATABASE_URI = DATABASE_URL
+            print(f"✅ Usando PostgreSQL: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else 'configurada'}")
+        except Exception as e:
+            # Si fallback está habilitado, usar SQLite
+            if ENABLE_SQLITE_FALLBACK:
+                print(f"⚠️ Error al conectar a PostgreSQL: {e}")
+                print(f"⚠️ Usando SQLite como fallback: {DB_PATH}")
+                SQLALCHEMY_DATABASE_URI = f"sqlite:///{DB_PATH}"
+            else:
+                print(f"❌ Error al conectar a PostgreSQL: {e}")
+                print("Si quieres habilitar el fallback a SQLite, configura ENABLE_SQLITE_FALLBACK=true en .env")
+                sys.exit(1)
     else:
+        # Usar SQLite directamente
+        print(f"✅ Usando SQLite: {DB_PATH}")
         SQLALCHEMY_DATABASE_URI = f"sqlite:///{DB_PATH}"
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Asegurar que el directorio de la base de datos existe
     @staticmethod
     def init_app(app):
-        db_dir = Path(app.config['DB_PATH']).parent
-        db_dir.mkdir(exist_ok=True)
+        # Asegurar que el directorio existe para SQLite
+        if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
+            db_dir = Path(app.config.get('DB_PATH', 'app/data/app.db')).parent
+            db_dir.mkdir(exist_ok=True)
     
 class DevelopmentConfig(Config):
     """Configuración para entorno de desarrollo."""
     DEBUG = True
     
-    # En desarrollo, usar SQLite por defecto si no hay DATABASE_URL
-    @classmethod
-    def init_app(cls, app):
-        Config.init_app(app)
-        print(f"🔧 Modo desarrollo: {app.config['SQLALCHEMY_DATABASE_URI']}")
-    
 class ProductionConfig(Config):
     """Configuración para entorno de producción."""
     DEBUG = False
     
-    # En producción, recomendar usar PostgreSQL
-    @classmethod
-    def init_app(cls, app):
-        Config.init_app(app)
-        if not app.config.get('DATABASE_URL'):
-            print("⚠️ Advertencia: Se recomienda usar PostgreSQL en producción")
-        print(f"🔧 Modo producción: {app.config['SQLALCHEMY_DATABASE_URI']}")
-    
 class TestingConfig(Config):
     """Configuración para entorno de pruebas."""
     TESTING = True
+    # Para pruebas, puede usar SQLite en memoria
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     WTF_CSRF_ENABLED = False
 
