@@ -8,7 +8,8 @@ Esta actualización implementa la capacidad de asignar múltiples proveedores a 
 2. Agregar múltiples proveedores a una misma partida para su comparación
 3. Establecer cualquiera de los proveedores como "proveedor principal" de la partida
 
-## Cambios Realizados los que sean
+## Cambios Realizados los que sean y quieran ser
+
 
 ### Modelo de Datos
 
