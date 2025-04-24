@@ -164,3 +164,48 @@ DB_PATH=app/data/app.db
 # PostgreSQL (Neon)
 # DATABASE_URL=postgresql://usuario:password@ep-nombre-id.eu-central-1.aws.neon.tech/neondb
 ```
+
+## 7. Sistema de Rutas Relativas
+
+### 7.1 Problema
+Error al mover la aplicación entre diferentes equipos debido a rutas absolutas codificadas.
+
+### 7.2 Solución Implementada
+- **Archivos nuevos**:
+  - `config.py`: Configuración centralizada de rutas
+  - `docs/rutas_relativas.md`: Documentación detallada
+
+- **Archivos modificados**:
+  - `main.py`: Adaptado para usar config.py
+  - `.env.example`: Actualizado con nuevas variables
+
+### 7.3 Características
+- Detección automática del directorio base de la aplicación
+- Rutas relativas para todos los recursos
+- Configuración por equipo a través de `.env`
+- Creación automática de directorios necesarios
+
+### 7.4 Nuevas variables en .env
+```
+# Directorios específicos por equipo
+CLIENTES_DIR=C:/Users/Usuario/Documents/Clientes
+LOGO_PATH=app/static/img/logo.jpg
+```
+
+### 7.5 Uso en otros archivos
+```python
+# Importar desde config.py
+from config import BASE_DIR, CONFIG, get_abs_path
+
+# Usar rutas relativas
+ruta_archivo = get_abs_path("app/data/archivo.txt")
+
+# Usar directorios configurables
+ruta_cliente = os.path.join(CONFIG['clientes_dir'], nombre_cliente)
+```
+
+### 7.6 Ventajas
+- Portabilidad entre equipos sin modificar código
+- Flexibilidad para configurar rutas según cada entorno
+- Centralización de todas las definiciones de rutas
+- Mejor mantenibilidad del código
