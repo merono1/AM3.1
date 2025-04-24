@@ -6,8 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from pathlib import Path
-from sqlalchemy import create_engine
-from sqlalchemy.pool import QueuePool
+import time
 
 from app.config import config
 
@@ -35,34 +34,48 @@ def create_app(config_name='default'):
     if using_postgres:
         print(f"✅ Usando PostgreSQL: {app.config['SQLALCHEMY_DATABASE_URI'].split('@')[1] if '@' in app.config['SQLALCHEMY_DATABASE_URI'] else 'configurada'}")
         
-        # Configurar opciones específicas para PostgreSQL (timeout, pool, etc)
-        postgres_uri = app.config['SQLALCHEMY_DATABASE_URI']
-        
-        # Personalizar el motor de SQLAlchemy para PostgreSQL con timeout
-        engine = create_engine(
-            postgres_uri,
-            connect_args={
-                "connect_timeout": 10,  # Timeout de conexión en segundos
-                "application_name": "AM3.1",  # Identificador de la aplicación
-            },
-            poolclass=QueuePool,
-            pool_size=5,  # Tamaño del pool de conexiones
-            max_overflow=10,  # Máximo número de conexiones adicionales
-            pool_timeout=30,  # Timeout para obtener una conexión del pool
-            pool_recycle=1800,  # Reciclar conexiones después de 30 minutos
-        )
-        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-            'engine': engine
-        }
+        # Los timeouts y opciones de conexión ya están configurados en app/config.py
+        # No es necesario crear un engine personalizado aquí
         
         # Verificar si la base de datos está en modo sleep
         try:
-            with engine.connect() as conn:
-                conn.execute("SELECT 1")
-                print("✅ Conexión a PostgreSQL establecida correctamente")
+            # Probar la conexión utilizando psycopg2 directamente
+            import psycopg2
+            conn = psycopg2.connect(
+                app.config['SQLALCHEMY_DATABASE_URI'],
+                connect_timeout=10,
+                application_name="AM3.1-AppInit"
+            )
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            cur.close()
+            conn.close()
+            print("✅ Conexión a PostgreSQL establecida correctamente")
         except Exception as e:
             print(f"⚠️ Error al conectar a PostgreSQL: {e}")
-            print("La base de datos podría estar en modo sleep. Intente realizar una operación para activarla.")
+            print("La base de datos podría estar en modo sleep. Intentando activarla...")
+            
+            # Intentos para despertar la base de datos
+            for i in range(3):
+                try:
+                    time.sleep(2)  # Esperar antes de reintentar
+                    import psycopg2
+                    conn = psycopg2.connect(
+                        app.config['SQLALCHEMY_DATABASE_URI'],
+                        connect_timeout=10,
+                        application_name="AM3.1-AppInit-Retry"
+                    )
+                    cur = conn.cursor()
+                    cur.execute("SELECT 1")
+                    cur.close()
+                    conn.close()
+                    print(f"✅ Conexión establecida en el intento {i+1}")
+                    break
+                except Exception as retry_error:
+                    print(f"Intento {i+1} fallido: {retry_error}")
+                    if i == 2:
+                        print("⚠️ No se pudo activar la base de datos. La aplicación puede fallar al conectarse.")
+                        print("Ejecute test_neon_connection.py para activar manualmente la base de datos.")
     else:
         # Para SQLite, asegurar que existe el directorio de datos y el archivo de base de datos
         db_path = Path(app.config['DB_PATH'])
