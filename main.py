@@ -1,6 +1,8 @@
 # main.py
 import os
 import sqlite3
+import psycopg2
+import time
 
 # Importar la configuración centralizada
 from config import (
@@ -17,6 +19,44 @@ if not is_second_run:
     using_postgres = DB_TYPE == "postgres"
     if using_postgres:
         print(f"✅ Usando PostgreSQL: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else 'configurada'}")
+        
+        # Verificar conexión a PostgreSQL antes de inicializar la aplicación
+        try:
+            print(f"Conectando a PostgreSQL (timeout: 5s)...")
+            conn = psycopg2.connect(
+                DATABASE_URL,
+                connect_timeout=5,
+                application_name="AM3.1-MainStartup"
+            )
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            cur.close()
+            conn.close()
+            print(f"✅ Conexión a PostgreSQL verificada")
+        except Exception as e:
+            print(f"⚠️ Error al conectar a PostgreSQL: {e}")
+            print("La base de datos podría estar en modo sleep. Intentando activarla...")
+            
+            # Intentar despertar la base de datos
+            for attempt in range(3):
+                print(f"Intento {attempt+1}/3...")
+                try:
+                    time.sleep(2)  # Esperar un poco antes del intento
+                    conn = psycopg2.connect(
+                        DATABASE_URL,
+                        connect_timeout=10,
+                        application_name="AM3.1-MainStartup"
+                    )
+                    cur = conn.cursor()
+                    cur.execute("SELECT 1")
+                    cur.close()
+                    conn.close()
+                    print(f"✅ Base de datos activada correctamente")
+                    break
+                except Exception as inner_e:
+                    print(f"Intento fallido: {inner_e}")
+                    if attempt == 2:
+                        print("No se pudo activar la base de datos. Intente ejecutar test_neon_connection.py primero.")
     else:
         db_dir = ensure_db_dir_exists()
         print(f"Ruta de la base de datos SQLite: {DB_PATH}")
@@ -49,9 +89,9 @@ def check_db():
         # Obtener las tablas disponibles utilizando SQLAlchemy
         from flask import current_app
         from sqlalchemy import inspect
-        from app import db
+        from app import db as flask_db  # Renombrar para evitar conflicto
         
-        inspector = inspect(db.engine)
+        inspector = inspect(flask_db.engine)
         tables = inspector.get_table_names()
         tables_html = "\\n".join([f"<li>{table}</li>" for table in tables])
         
@@ -90,6 +130,7 @@ def check_db():
         """, connection_type=connection_type, db_info=db_info, tables_html=tables_html)
     except Exception as e:
         connection_type = "PostgreSQL" if using_postgres else "SQLite"
+        db_info = DATABASE_URL.split('@')[1] if using_postgres and '@' in DATABASE_URL else db_path_display
         
         return render_template_string("""<!DOCTYPE html>
             <html>
@@ -117,7 +158,7 @@ def check_db():
                                 <li>Verifica que la cadena de conexión DATABASE_URL en el archivo .env es correcta.</li>
                                 <li>Asegúrate de que el servidor PostgreSQL está en funcionamiento.</li>
                                 <li>Comprueba si hay restricciones de IP o si necesitas VPN para acceder al servidor.</li>
-                                <li>Ejecuta <code>python reset_db.bat</code> para recrear la base de datos.</li>
+                                <li>Ejecuta <code>python test_neon_connection.py</code> para activar la base de datos.</li>
                                 {% else %}
                                 <li>Verifica que el directorio existe y tiene permisos de escritura.</li>
                                 <li>Ejecuta <code>python reset_db_simple.py</code> para recrear la base de datos desde cero.</li>
@@ -137,7 +178,7 @@ def check_db():
 
 if __name__ == '__main__':
     if not is_second_run:
-        print("\\n=== Iniciando aplicación AM3.1 ===")
+        print("\n=== Iniciando aplicación AM3.1 ===")
         print(f"Configuración: {os.getenv('FLASK_ENV', 'default')}")
         print(f"Escuchando en: http://localhost:{PORT}")
     
