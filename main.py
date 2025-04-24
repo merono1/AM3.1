@@ -45,7 +45,7 @@ def check_db():
         # Obtener las tablas disponibles utilizando SQLAlchemy
         from flask import current_app
         from sqlalchemy import inspect
-        from app import db
+        from app import db as flask_db
         
         inspector = inspect(db.engine)
         tables = inspector.get_table_names()
