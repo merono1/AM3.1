@@ -1,0 +1,92 @@
+<!-- app/templates/presupuestos/lista.html -->
+{% extends 'layout/base.html' %}
+{% from 'layout/components.html' import action_buttons, confirmation_modal %}
+
+{% block title %}AM3.1 - Presupuestos{% endblock %}
+
+{% block page_title %}Gestión de Presupuestos{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <a href="{{ url_for('proyectos.listar_proyectos') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Seleccionar Proyecto para Nuevo Presupuesto
+        </a>
+    </div>
+    <div class="col-md-4">
+        <div class="input-group">
+            <input type="text" class="form-control table-filter" placeholder="Buscar presupuesto..." data-table="presupuestos-table">
+            <button class="btn btn-outline-secondary" type="button" onclick="exportTableToCSV('presupuestos-table', 'presupuestos.csv')">
+                <i class="fas fa-download"></i> Exportar
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover" id="presupuestos-table">
+                <thead>
+                    <tr>
+                        <th>Referencia</th>
+                        <th>Proyecto</th>
+                        <th>Cliente</th>
+                        <th>Fecha</th>
+                        <th>Título</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for presupuesto, proyecto, cliente in presupuestos %}
+                    <tr>
+                        <td>{{ presupuesto.referencia }}</td>
+                        <td>{{ proyecto.nombre_proyecto or proyecto.referencia }}</td>
+                        <td>{{ cliente.nombre }}</td>
+                        <td>{{ presupuesto.fecha.strftime('%d/%m/%Y') if presupuesto.fecha else 'No especificada' }}</td>
+                        <td>{{ presupuesto.titulo or 'Sin título' }}</td>
+                        <td>
+                            <span class="badge {% if presupuesto.estado == 'Aprobado' %}bg-success{% elif presupuesto.estado == 'Rechazado' %}bg-danger{% elif presupuesto.estado == 'Borrador' %}bg-secondary{% else %}bg-primary{% endif %}">
+                                {{ presupuesto.estado }}
+                            </span>
+                        </td>
+                        <td>
+                            {{ action_buttons(
+                                edit_url=url_for('presupuestos.editar_presupuesto', id=presupuesto.id),
+                                delete_url=url_for('presupuestos.eliminar_presupuesto', id=presupuesto.id),
+                                custom_buttons=[
+                                    {
+                                        'url': url_for('presupuestos.generar_pdf', id=presupuesto.id),
+                                        'class': 'btn-info',
+                                        'icon': 'fas fa-file-pdf',
+                                        'title': 'Generar PDF'
+                                    },
+                                    {
+                                        'url': url_for('hojas_trabajo.hojas_por_proyecto', id_proyecto=proyecto.id),
+                                        'class': 'btn-success',
+                                        'icon': 'fas fa-tasks',
+                                        'title': 'Hojas de trabajo'
+                                    }
+                                ]
+                            ) }}
+                            
+                            {{ confirmation_modal(
+                                id='delete-modal-' + presupuesto.id|string,
+                                title='Confirmar eliminación',
+                                message='¿Está seguro de que desea eliminar el presupuesto?',
+                                action_url=url_for('presupuestos.eliminar_presupuesto', id=presupuesto.id)
+                            ) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center">No hay presupuestos registrados</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

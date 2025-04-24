@@ -1,0 +1,18 @@
+# requirements.txt
+Flask==2.2.3
+Flask-SQLAlchemy==3.0.3
+Flask-Migrate==4.0.4
+Flask-WTF==1.1.1
+Werkzeug==2.2.3
+python-dotenv==1.0.0
+PyPDF2==3.0.1
+# reportlab==3.5.59  # Comentado temporalmente para probar la aplicación
+pdfkit==1.0.0
+fpdf==1.7.2
+email-validator==2.0.0.post2
+pytest==7.3.1
+gunicorn==20.1.0
+
+# Paquetes para PostgreSQL
+psycopg2-binary==2.9.9  # Controlador para PostgreSQL
+sqlalchemy-utils==0.41.1  # Utilidades adicionales para SQLAlchemy

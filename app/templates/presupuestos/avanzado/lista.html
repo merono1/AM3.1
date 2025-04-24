@@ -1,0 +1,432 @@
+<!-- app/templates/presupuestos/avanzado/lista.html -->
+{% extends 'layout/base.html' %}
+{% from 'layout/components.html' import action_buttons, confirmation_modal %}
+
+{% block title %}AM3.1 - Listado Avanzado de Presupuestos{% endblock %}
+
+{% block page_title %}Gestión Avanzada de Presupuestos{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <a href="{{ url_for('proyectos.listar_proyectos') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Seleccionar Proyecto para Nuevo Presupuesto
+        </a>
+    </div>
+    <div class="col-md-4">
+        <div class="input-group">
+            <input type="text" class="form-control table-filter" placeholder="Búsqueda rápida..." data-table="presupuestos-avanzado-table">
+            <button class="btn btn-outline-secondary" type="button" onclick="exportTableToCSV('presupuestos-avanzado-table', 'presupuestos_avanzado.csv')">
+                <i class="fas fa-download"></i> Exportar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros avanzados -->
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">
+            <button class="btn btn-link" type="button" data-bs-toggle="collapse" data-bs-target="#filtros-avanzados" aria-expanded="false">
+                <i class="fas fa-filter"></i> Filtros Avanzados
+            </button>
+        </h5>
+    </div>
+    <div class="collapse" id="filtros-avanzados">
+        <div class="card-body">
+            <form id="form-filtros" method="GET" action="{{ url_for('presupuestos_avanzados.listar_presupuestos_avanzado') }}">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label for="cliente" class="form-label">Cliente</label>
+                        <select class="form-select" id="cliente" name="cliente">
+                            <option value="">Todos</option>
+                            {% for cliente in clientes %}
+                                <option value="{{ cliente.id }}" {% if request.args.get('cliente')|int == cliente.id %}selected{% endif %}>
+                                    {{ cliente.nombre }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="tipo_proyecto" class="form-label">Tipo de Proyecto</label>
+                        <select class="form-select" id="tipo_proyecto" name="tipo_proyecto">
+                            <option value="">Todos</option>
+                            {% for tipo in tipos_proyecto %}
+                                <option value="{{ tipo }}" {% if request.args.get('tipo_proyecto') == tipo %}selected{% endif %}>
+                                    {{ tipo }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="tecnico" class="form-label">Técnico Encargado</label>
+                        <input type="text" class="form-control" id="tecnico" name="tecnico" value="{{ request.args.get('tecnico', '') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="estado_workflow" class="form-label">Estado de Workflow</label>
+                        <select class="form-select" id="estado_workflow" name="estado_workflow">
+                            <option value="">Todos</option>
+                            <option value="En estudio" {% if request.args.get('estado_workflow') == 'En estudio' %}selected{% endif %}>En estudio</option>
+                            <option value="Estudiado" {% if request.args.get('estado_workflow') == 'Estudiado' %}selected{% endif %}>Estudiado</option>
+                            <option value="Revisión" {% if request.args.get('estado_workflow') == 'Revisión' %}selected{% endif %}>Revisión</option>
+                            <option value="Enviado" {% if request.args.get('estado_workflow') == 'Enviado' %}selected{% endif %}>Enviado</option>
+                            <option value="Pendiente de envío" {% if request.args.get('estado_workflow') == 'Pendiente de envío' %}selected{% endif %}>Pendiente de envío</option>
+                            <option value="Ejecutado" {% if request.args.get('estado_workflow') == 'Ejecutado' %}selected{% endif %}>Ejecutado</option>
+                            <option value="En ejecución" {% if request.args.get('estado_workflow') == 'En ejecución' %}selected{% endif %}>En ejecución</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label for="fecha_desde" class="form-label">Fecha Desde</label>
+                        <input type="date" class="form-control" id="fecha_desde" name="fecha_desde" value="{{ request.args.get('fecha_desde', '') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="fecha_hasta" class="form-label">Fecha Hasta</label>
+                        <input type="date" class="form-control" id="fecha_hasta" name="fecha_hasta" value="{{ request.args.get('fecha_hasta', '') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="aprobado" class="form-label">Aprobado</label>
+                        <select class="form-select" id="aprobado" name="aprobado">
+                            <option value="">Todos</option>
+                            <option value="si" {% if request.args.get('aprobado') == 'si' %}selected{% endif %}>Sí</option>
+                            <option value="no" {% if request.args.get('aprobado') == 'no' %}selected{% endif %}>No</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="ref" class="form-label">Referencia</label>
+                        <input type="text" class="form-control" id="ref" name="ref" value="{{ request.args.get('ref', '') }}">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Aplicar Filtros
+                        </button>
+                        <a href="{{ url_for('presupuestos_avanzados.listar_presupuestos_avanzado') }}" class="btn btn-secondary">
+                            <i class="fas fa-broom"></i> Limpiar Filtros
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de resultados -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover" id="presupuestos-avanzado-table">
+                <thead>
+                    <tr>
+                        <th>Referencia</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Tipo Proyecto</th>
+                        <th>Nombre Proyecto</th>
+                        <th>Técnico Encargado</th>
+                        <th>Aprobado</th>
+                        <th>Fecha Aprobación</th>
+                        <th>Estado Workflow</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for presupuesto, proyecto, cliente in presupuestos %}
+                    <tr class="{% if presupuesto.aprobacion %}table-success{% else %}table-danger{% endif %}">
+                        <td>{{ presupuesto.referencia }}</td>
+                        <td>{{ presupuesto.fecha.strftime('%d/%m/%Y') if presupuesto.fecha else 'No especificada' }}</td>
+                        <td>{{ cliente.nombre }}</td>
+                        <td>{{ proyecto.tipo_proyecto or 'No especificado' }}</td>
+                        <td>{{ proyecto.nombre_proyecto or 'Sin nombre' }}</td>
+                        <td>{{ presupuesto.tecnico_encargado or 'No asignado' }}</td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input toggle-aprobacion" type="checkbox" 
+                                       id="switch-{{ presupuesto.id }}" 
+                                       data-presupuesto-id="{{ presupuesto.id }}" 
+                                       {% if presupuesto.aprobacion %}checked{% endif %}>
+                                <label class="form-check-label" for="switch-{{ presupuesto.id }}">
+                                    {{ 'Sí' if presupuesto.aprobacion else 'No' }}
+                                </label>
+                            </div>
+                        </td>
+                        <td>{{ presupuesto.fecha_aprobacion.strftime('%d/%m/%Y') if presupuesto.fecha_aprobacion else 'No aprobado' }}</td>
+                        <td>
+                            <select class="form-select form-select-sm estado-workflow" 
+                                    data-presupuesto-id="{{ presupuesto.id }}">
+                                {% if presupuesto.estado_workflow is defined and presupuesto.estado_workflow is not none %}
+                                <option value="En estudio" {% if presupuesto.estado_workflow == 'En estudio' %}selected{% endif %}>En estudio</option>
+                                <option value="Estudiado" {% if presupuesto.estado_workflow == 'Estudiado' %}selected{% endif %}>Estudiado</option>
+                                <option value="Revisión" {% if presupuesto.estado_workflow == 'Revisión' %}selected{% endif %}>Revisión</option>
+                                <option value="Enviado" {% if presupuesto.estado_workflow == 'Enviado' %}selected{% endif %}>Enviado</option>
+                                <option value="Pendiente de envío" {% if presupuesto.estado_workflow == 'Pendiente de envío' %}selected{% endif %}>Pendiente de envío</option>
+                                <option value="Ejecutado" {% if presupuesto.estado_workflow == 'Ejecutado' %}selected{% endif %}>Ejecutado</option>
+                                <option value="En ejecución" {% if presupuesto.estado_workflow == 'En ejecución' %}selected{% endif %}>En ejecución</option>
+                                {% else %}
+                                <option value="En estudio" selected>En estudio</option>
+                                <option value="Estudiado">Estudiado</option>
+                                <option value="Revisión">Revisión</option>
+                                <option value="Enviado">Enviado</option>
+                                <option value="Pendiente de envío">Pendiente de envío</option>
+                                <option value="Ejecutado">Ejecutado</option>
+                                <option value="En ejecución">En ejecución</option>
+                                <option disabled style="background-color: #ffdddd;">⚠️ Ejecute la migración</option>
+                                <a href="/check_db" class="btn btn-sm btn-warning mt-2" target="_blank" style="display: block; text-decoration: none;">
+                                    <i class="fas fa-database"></i> Verificar Base de Datos
+                                </a>
+                                {% endif %}
+                            </select>
+                        </td>
+                        <td>
+                            {{ action_buttons(
+                                edit_url=url_for('presupuestos.editar_presupuesto', id=presupuesto.id),
+                                delete_url=url_for('presupuestos.eliminar_presupuesto', id=presupuesto.id),
+                                custom_buttons=[
+                                    {
+                                        'url': url_for('presupuestos.generar_pdf', id=presupuesto.id),
+                                        'class': 'btn-info',
+                                        'icon': 'fas fa-file-pdf',
+                                        'title': 'Generar PDF'
+                                    },
+                                    {
+                                        'url': url_for('hojas_trabajo.hojas_por_presupuesto', id_presupuesto=presupuesto.id),
+                                        'class': 'btn-success',
+                                        'icon': 'fas fa-tasks',
+                                        'title': 'Hojas de trabajo'
+                                    }
+                                ]
+                            ) }}
+                            
+                            {{ confirmation_modal(
+                                id='delete-modal-' + presupuesto.id|string,
+                                title='Confirmar eliminación',
+                                message='¿Está seguro de que desea eliminar el presupuesto?',
+                                action_url=url_for('presupuestos.eliminar_presupuesto', id=presupuesto.id)
+                            ) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="10" class="text-center">No hay presupuestos que coincidan con los criterios seleccionados</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Script para manejar la aprobación desde la lista
+document.addEventListener('DOMContentLoaded', function() {
+    // Obtener el token CSRF del meta tag
+    const csrfToken = document.querySelector('meta[name="csrf-token"]') ? 
+                      document.querySelector('meta[name="csrf-token"]').getAttribute('content') : 
+                      null;
+    
+    // Mostrar mensaje si no hay token CSRF
+    if (!csrfToken) {
+        console.warn('No se encontró el token CSRF en la página');
+    }
+    
+    // Manejar cambios en los switches de aprobación
+    const aprobacionSwitches = document.querySelectorAll('.toggle-aprobacion');
+    aprobacionSwitches.forEach(switch_ => {
+        switch_.addEventListener('change', function() {
+            const presupuestoId = this.dataset.presupuestoId;
+            const isApproved = this.checked;
+            
+            console.log(`Cambiando aprobación para presupuesto ${presupuestoId} a: ${isApproved ? 'Aprobado' : 'No aprobado'}`);
+            
+            // Actualizar la etiqueta del switch
+            const label = this.nextElementSibling;
+            label.textContent = isApproved ? 'Sí' : 'No';
+            
+            // Actualizar el color de la fila
+            const row = this.closest('tr');
+            if (isApproved) {
+                row.classList.remove('table-danger');
+                row.classList.add('table-success');
+            } else {
+                row.classList.remove('table-success');
+                row.classList.add('table-danger');
+            }
+            
+            // Preparar los headers de la petición
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            };
+            
+            // Añadir el token CSRF si existe
+            if (csrfToken) {
+                headers['X-CSRFToken'] = csrfToken;
+            }
+            
+            // Enviar la actualización al servidor
+            fetch(`/presupuestos/api/actualizar-aprobacion/${presupuestoId}`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    aprobacion: isApproved ? 'Aprobado' : ''
+                })
+            })
+            .then(response => {
+                // Verificar si la respuesta es correcta
+                if (!response.ok) {
+                    console.error(`Error HTTP: ${response.status} ${response.statusText}`);
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Actualizar la fecha de aprobación en la tabla si es necesario
+                    const fechaAprobacionCell = row.cells[7]; // Índice de la celda de fecha de aprobación
+                    fechaAprobacionCell.textContent = data.fecha_aprobacion || 'No aprobado';
+                    
+                    // Mostrar notificación
+                    showNotification(data.message, 'success');
+                } else {
+                    // Si hay error, revertir el cambio
+                    this.checked = !isApproved;
+                    label.textContent = !isApproved ? 'Sí' : 'No';
+                    
+                    if (!isApproved) {
+                        row.classList.remove('table-danger');
+                        row.classList.add('table-success');
+                    } else {
+                        row.classList.remove('table-success');
+                        row.classList.add('table-danger');
+                    }
+                    
+                    showNotification(data.error || 'Error al actualizar el estado de aprobación', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error completo:', error);
+                
+                // Revertir cambios en caso de error
+                this.checked = !isApproved;
+                label.textContent = !isApproved ? 'Sí' : 'No';
+                
+                if (!isApproved) {
+                    row.classList.remove('table-danger');
+                    row.classList.add('table-success');
+                } else {
+                    row.classList.remove('table-success');
+                    row.classList.add('table-danger');
+                }
+                
+                // Mostrar mensaje de error más detallado si es posible
+                let errorMessage = 'Error de conexión al actualizar el estado de aprobación';
+                if (error.message) {
+                    errorMessage += `: ${error.message}`;
+                }
+                
+                showNotification(errorMessage, 'danger');
+            });
+        });
+    });
+    
+    // Manejar cambios en el estado del workflow
+    const estadoWorkflowSelects = document.querySelectorAll('.estado-workflow');
+    estadoWorkflowSelects.forEach(select => {
+        select.addEventListener('change', function() {
+            const presupuestoId = this.dataset.presupuestoId;
+            const nuevoEstado = this.value;
+            
+            // Verificar si hay una opción de advertencia seleccionada
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption.disabled && selectedOption.textContent.includes('Ejecute la migración')) {
+                showNotification('Debe ejecutar el script de actualización de base de datos antes de usar esta funcionalidad', 'warning');
+                // Seleccionar la primera opción
+                this.selectedIndex = 0;
+                return;
+            }
+            
+            // Preparar los headers de la petición
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            };
+            
+            // Añadir el token CSRF si existe
+            if (csrfToken) {
+                headers['X-CSRFToken'] = csrfToken;
+            }
+            
+            // Enviar la actualización al servidor
+            fetch(`/presupuestos/api/actualizar-estado-workflow/${presupuestoId}`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    estado_workflow: nuevoEstado
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    console.error(`Error HTTP: ${response.status} ${response.statusText}`);
+                    
+                    if (response.status === 500) {
+                        showNotification('Error en el servidor. Es posible que necesite ejecutar la migración de la base de datos.', 'danger');
+                        throw new Error('Error del servidor');
+                    }
+                    
+                    // Intentar obtener más detalles del error si es posible
+                    return response.json().then(data => {
+                        throw new Error(data.error || `Error ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                } else {
+                    showNotification(data.error || 'Error al actualizar el estado de workflow', 'danger');
+                    // Revertir a valor anterior si es necesario
+                }
+            })
+            .catch(error => {
+                console.error('Error completo:', error);
+                
+                // Mostrar mensaje de error más detallado si es posible
+                let errorMessage = 'Error de conexión al actualizar el estado de workflow';
+                if (error.message) {
+                    errorMessage += `: ${error.message}`;
+                }
+                
+                showNotification(errorMessage, 'danger');
+            });
+        });
+    });
+    
+    // Función para mostrar notificaciones
+    function showNotification(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        alertDiv.style.top = '20px';
+        alertDiv.style.right = '20px';
+        alertDiv.style.zIndex = '9999';
+        
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // Auto-cerrar después de 3 segundos
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 300);
+        }, 3000);
+    }
+});
+</script>
+{% endblock %}

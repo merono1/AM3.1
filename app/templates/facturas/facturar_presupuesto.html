@@ -1,0 +1,287 @@
+{% extends "layout/base.html" %}
+{% block content %}
+<div class="container-fluid mt-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('proyectos.listar_proyectos') }}">Proyectos</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('presupuestos.presupuestos_por_proyecto', id_proyecto=proyecto.id) }}">{{ proyecto.nombre_proyecto or proyecto.referencia }}</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('presupuestos.editar_presupuesto', id=presupuesto.id) }}">{{ presupuesto.referencia }}</a></li>
+      <li class="breadcrumb-item active">Facturar Presupuesto</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Facturar Presupuesto</h2>
+  </div>
+
+  <!-- Información general del presupuesto -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">Información del Presupuesto</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          <p><strong>Referencia:</strong> {{ presupuesto.referencia }}</p>
+          <p><strong>Proyecto:</strong> {{ proyecto.nombre_proyecto or proyecto.referencia }}</p>
+        </div>
+        <div class="col-md-4">
+          <p><strong>Cliente:</strong> {{ cliente.nombre }} {{ cliente.apellidos }}</p>
+          <p><strong>Fecha:</strong> {{ presupuesto.fecha.strftime('%d/%m/%Y') if presupuesto.fecha }}</p>
+        </div>
+        <div class="col-md-4">
+          <p><strong>Total:</strong> {{ "%.2f"|format(presupuesto.total) }} €</p>
+          <p><strong>Estado:</strong> {{ presupuesto.estado }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulario de facturación -->
+  <form method="post" id="facturacionForm">
+    <!-- Token CSRF -->
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Opciones de facturación -->
+    <div class="card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">Opciones de Facturación</h5>
+      </div>
+      <div class="card-body">
+        <!-- Opción para facturar por bloque o seleccionar partidas -->
+        <div class="mb-4">
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="facturar_por_bloque" name="facturar_por_bloque">
+            <label class="form-check-label" for="facturar_por_bloque">
+              <strong>Facturar en bloque</strong> (aplicar un porcentaje a todas las partidas)
+            </label>
+          </div>
+          <!-- Mensaje de ayuda para el usuario -->
+          <div id="bloque_help" class="mt-2 mb-3 alert alert-info" style="display: none;">
+            <small><i class="fas fa-info-circle"></i> Cuando se activa la facturación en bloque, la selección individual de partidas se desactiva. El porcentaje indicado se aplicará a todas las partidas.</small>
+          </div>
+
+          <div id="bloque_options" class="ms-4 p-3 border rounded" style="display: none;">
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <label for="porcentaje_bloque" class="form-label">Porcentaje a facturar (%)</label>
+                <input type="number" class="form-control" id="porcentaje_bloque" name="porcentaje_bloque" min="0" max="100" value="100" step="0.01">
+                <div class="form-text">Si una partida ya tiene un porcentaje facturado, solo se facturará el porcentaje restante.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Parámetros de la factura -->
+        <div class="row mb-3">
+          <div class="col-md-3">
+            <label for="iva_porcentaje" class="form-label">IVA (%)</label>
+            <input type="number" class="form-control" id="iva_porcentaje" name="iva_porcentaje" min="0" value="21" step="0.01">
+          </div>
+          <div class="col-md-3">
+            <label for="forma_pago" class="form-label">Forma de Pago</label>
+            <select class="form-select" id="forma_pago" name="forma_pago">
+              <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+              <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+              <option value="Efectivo">Efectivo</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Domiciliación Bancaria">Domiciliación Bancaria</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label for="datos_bancarios" class="form-label">Datos Bancarios</label>
+            <input type="text" class="form-control" id="datos_bancarios" name="datos_bancarios" 
+                   value="IBAN: ES00 0000 0000 0000 0000 0000">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selección de partidas -->
+    <div id="partidas_selection" class="card">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">Selección de Partidas</h5>
+        <div class="form-text">
+          Seleccione las partidas que desea facturar. Para cada partida puede indicar un porcentaje específico.
+        </div>
+      </div>
+      <div class="card-body">
+        <!-- Botones de selección rápida -->
+        <div class="mb-3">
+          <button type="button" class="btn btn-sm btn-outline-primary" id="selectAll">Seleccionar Todo</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAll">Deseleccionar Todo</button>
+        </div>
+
+        <!-- Capítulos y partidas -->
+        {% for capitulo in capitulos %}
+          <div class="mb-4">
+            <h6 class="border-bottom pb-2">CAPÍTULO {{ capitulo.numero }}: {{ capitulo.descripcion }}</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 40px;"></th>
+                    <th>Descripción</th>
+                    <th style="width: 100px;">Cantidad</th>
+                    <th style="width: 120px;">Precio Unit.</th>
+                    <th style="width: 120px;">Total</th>
+                    <th style="width: 120px;">% Facturado</th>
+                    <th style="width: 160px;">% a Facturar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for partida in partidas_por_capitulo.get(capitulo.numero, []) %}
+                    <tr class="partida-row {% if partida.porcentaje_facturado >= 100 %}table-success{% endif %}">
+                      <td>
+                        <div class="form-check">
+                          <input class="form-check-input partida-checkbox" type="checkbox" 
+                                name="partidas[]" value="{{ partida.id }}" 
+                                id="partida_{{ partida.id }}"
+                                {% if partida.porcentaje_facturado >= 100 %}disabled checked{% endif %}>
+                        </div>
+                      </td>
+                      <td>{{ partida.descripcion }}</td>
+                      <td>{{ partida.cantidad }}</td>
+                      <td>{{ "%.2f"|format(partida.precio) }} €</td>
+                      <td>{{ "%.2f"|format(partida.final) }} €</td>
+                      <td>
+                        <div class="progress" style="height: 20px;">
+                          <div class="progress-bar bg-success" role="progressbar" 
+                              style="width: {{ partida.porcentaje_facturado }}%;" 
+                              aria-valuenow="{{ partida.porcentaje_facturado }}" aria-valuemin="0" aria-valuemax="100">
+                            {{ "%.1f"|format(partida.porcentaje_facturado) }}%
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <input type="number" class="form-control form-control-sm porcentaje-input" 
+                               name="porcentaje_{{ partida.id }}" 
+                               min="0" max="{{ 100 - partida.porcentaje_facturado }}" 
+                               value="{{ 100 - partida.porcentaje_facturado if partida.porcentaje_facturado < 100 else 0 }}" 
+                               step="0.01" 
+                               {% if partida.porcentaje_facturado >= 100 %}disabled{% endif %}>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        {% endfor %}
+
+        <!-- Botones de acción -->
+        <div class="d-flex justify-content-end mt-4">
+          <a href="{{ url_for('presupuestos.editar_presupuesto', id=presupuesto.id) }}" class="btn btn-secondary me-2">Cancelar</a>
+          <button type="submit" class="btn btn-primary">Crear Factura</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Elementos del DOM
+    const facturarPorBloque = document.getElementById('facturar_por_bloque');
+    const bloqueOptions = document.getElementById('bloque_options');
+    const partidasSelection = document.getElementById('partidas_selection');
+    const selectAllBtn = document.getElementById('selectAll');
+    const deselectAllBtn = document.getElementById('deselectAll');
+    
+    // Crear una función para actualizar el estado de facturación en bloque
+    function actualizarEstadoFacturacionBloque() {
+      const bloqueHelp = document.getElementById('bloque_help');
+      const isBloque = facturarPorBloque.checked;
+      
+      // Siempre mostrar opciones de bloque si está seleccionado
+      bloqueOptions.style.display = isBloque ? 'block' : 'none';
+      bloqueHelp.style.display = isBloque ? 'block' : 'none';
+      
+      // Cambiar opacidad para indicación visual pero nunca deshabilitar interacción
+      partidasSelection.style.opacity = isBloque ? '0.6' : '1';
+      
+      // En lugar de deshabilitar los controles, solo dar indicación visual
+      document.querySelectorAll('.partida-row').forEach(row => {
+        if (isBloque) {
+          row.classList.add('text-muted');
+        } else {
+          row.classList.remove('text-muted');
+        }
+      });
+      
+      console.log('Modo facturación en bloque: ' + (isBloque ? 'Activado' : 'Desactivado'));
+    }
+    
+    // Asignar evento change
+    facturarPorBloque.addEventListener('change', actualizarEstadoFacturacionBloque);
+    
+    // Inicializar estado
+    actualizarEstadoFacturacionBloque();
+    
+    // Botones de selección rápida
+    selectAllBtn.addEventListener('click', function() {
+      document.querySelectorAll('.partida-checkbox:not([disabled])').forEach(checkbox => {
+        checkbox.checked = true;
+      });
+    });
+    
+    deselectAllBtn.addEventListener('click', function() {
+      document.querySelectorAll('.partida-checkbox:not([disabled])').forEach(checkbox => {
+        checkbox.checked = false;
+      });
+    });
+    
+    // Validar valores de porcentaje
+    document.querySelectorAll('.porcentaje-input:not([disabled])').forEach(input => {
+      input.addEventListener('input', function() {
+        const max = parseFloat(this.getAttribute('max') || 100);
+        const value = parseFloat(this.value || 0);
+        
+        if (value > max) {
+          this.value = max;
+        } else if (value < 0) {
+          this.value = 0;
+        }
+      });
+    });
+    
+    // Al seleccionar una partida, asegurarse de que tenga un porcentaje > 0
+    document.querySelectorAll('.partida-checkbox:not([disabled])').forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        const id = this.value;
+        const porcentajeInput = document.querySelector(`input[name="porcentaje_${id}"]`);
+        
+        if (this.checked && porcentajeInput && parseFloat(porcentajeInput.value) <= 0) {
+          const max = parseFloat(porcentajeInput.getAttribute('max') || 100);
+          porcentajeInput.value = max;
+        }
+      });
+    });
+    
+    // Simplificar la validación del formulario
+    const form = document.getElementById('facturacionForm');
+    form.onsubmit = function(event) {
+      console.log('Formulario enviado');
+      
+      // Si está en modo bloque, verificar que el porcentaje sea válido
+      if (facturarPorBloque.checked) {
+        const porcentajeBloque = parseFloat(document.getElementById('porcentaje_bloque').value || 0);
+        if (isNaN(porcentajeBloque) || porcentajeBloque <= 0 || porcentajeBloque > 100) {
+          alert('El porcentaje para facturación en bloque debe ser un valor entre 0 y 100.');
+          return false;
+        }
+        return true; // Continuar con el envío
+      } else {
+        // Verificar que haya partidas seleccionadas
+        const seleccionadas = document.querySelectorAll('.partida-checkbox:checked').length;
+        if (seleccionadas === 0) {
+          alert('Debe seleccionar al menos una partida para facturar.');
+          return false;
+        }
+        return true; // Continuar con el envío
+      }
+    };
+  });
+</script>
+{% endblock %}

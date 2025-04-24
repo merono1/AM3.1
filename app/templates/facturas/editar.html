@@ -1,0 +1,311 @@
+{% extends "layout/base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+
+  <!-- Cabecera: Título y botón para volver al listado -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Editar Factura</h2>
+    <a href="{{ url_for('facturas.listar_facturas') }}" class="btn btn-info" title="Ver lista de facturas">Ver Lista de Facturas</a>
+  </div>
+
+  <!-- Formulario principal -->
+  <form method="post" action="{{ url_for('facturas.editar_factura', id=factura.id) }}">
+    <!-- Token CSRF -->
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Datos básicos de la factura -->
+    <div class="card mb-3">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">Datos Generales</h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-2 mb-3">
+          <div class="col-md-3">
+            <label for="numero" class="form-label">Número de Factura</label>
+            <input type="text" class="form-control" id="numero" name="numero" value="{{ factura.numero }}" readonly>
+          </div>
+          <div class="col-md-3">
+            <label for="fecha_emision" class="form-label">Fecha de Emisión</label>
+            <input type="date" class="form-control" id="fecha_emision" name="fecha_emision" value="{{ factura.fecha_emision.strftime('%Y-%m-%d') if factura.fecha_emision else '' }}" required>
+          </div>
+          <div class="col-md-3">
+            <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento</label>
+            <input type="date" class="form-control" id="fecha_vencimiento" name="fecha_vencimiento" value="{{ factura.fecha_vencimiento.strftime('%Y-%m-%d') if factura.fecha_vencimiento else '' }}">
+          </div>
+          <div class="col-md-3">
+            <label for="estado" class="form-label">Estado</label>
+            <select class="form-select" id="estado" name="estado">
+              <option value="Pendiente" {% if factura.estado == 'Pendiente' %}selected{% endif %}>Pendiente</option>
+              <option value="Pagada" {% if factura.estado == 'Pagada' %}selected{% endif %}>Pagada</option>
+              <option value="Cancelada" {% if factura.estado == 'Cancelada' %}selected{% endif %}>Cancelada</option>
+              <option value="Vencida" {% if factura.estado == 'Vencida' %}selected{% endif %}>Vencida</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label for="concepto" class="form-label">Concepto General</label>
+            <input type="text" class="form-control" id="concepto" name="concepto" value="{{ factura.concepto }}">
+          </div>
+          <div class="col-md-3">
+            <label for="iva_porcentaje" class="form-label">IVA (%)</label>
+            <input type="number" step="0.01" class="form-control" id="iva_porcentaje" name="iva_porcentaje" value="{{ factura.iva_porcentaje }}" required>
+          </div>
+          <div class="col-md-3">
+            <label for="forma_pago" class="form-label">Forma de Pago</label>
+            <select class="form-select" id="forma_pago" name="forma_pago">
+              <option value="Transferencia Bancaria" {% if factura.forma_pago == 'Transferencia Bancaria' %}selected{% endif %}>Transferencia Bancaria</option>
+              <option value="Tarjeta de Crédito" {% if factura.forma_pago == 'Tarjeta de Crédito' %}selected{% endif %}>Tarjeta de Crédito</option>
+              <option value="Efectivo" {% if factura.forma_pago == 'Efectivo' %}selected{% endif %}>Efectivo</option>
+              <option value="Cheque" {% if factura.forma_pago == 'Cheque' %}selected{% endif %}>Cheque</option>
+              <option value="Domiciliación Bancaria" {% if factura.forma_pago == 'Domiciliación Bancaria' %}selected{% endif %}>Domiciliación Bancaria</option>
+              <option value="Otros" {% if factura.forma_pago == 'Otros' %}selected{% endif %}>Otros</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label for="datos_bancarios" class="form-label">Datos Bancarios</label>
+            <input type="text" class="form-control" id="datos_bancarios" name="datos_bancarios" value="{{ factura.datos_bancarios }}">
+          </div>
+          <div class="col-md-6">
+            <label for="notas" class="form-label">Notas</label>
+            <textarea class="form-control" id="notas" name="notas" rows="1">{{ factura.notas }}</textarea>
+          </div>
+        </div>
+        
+        <div class="row g-2">
+          <div class="col-md-4">
+            <label class="form-label">Cliente</label>
+            <input type="text" class="form-control" value="{{ cliente.nombre }} {{ cliente.apellidos }}" readonly>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Proyecto</label>
+            <input type="text" class="form-control" value="{{ proyecto.nombre_proyecto or proyecto.referencia }}" readonly>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha Creación</label>
+            <input type="text" class="form-control" value="{{ factura.fecha_creacion.strftime('%d/%m/%Y %H:%M') if factura.fecha_creacion else '' }}" readonly>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Totales de la factura -->
+    <div class="card mb-3">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">Resumen</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-4">
+            <p><strong>Base Imponible:</strong> {{ "%.2f"|format(factura.base_imponible) }} €</p>
+          </div>
+          <div class="col-md-4">
+            <p><strong>IVA ({{ factura.iva_porcentaje }}%):</strong> {{ "%.2f"|format(factura.iva_importe) }} €</p>
+          </div>
+          <div class="col-md-4">
+            <p><strong>Total Factura:</strong> {{ "%.2f"|format(factura.total) }} €</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Líneas de factura -->
+    <div class="card mb-3">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Líneas de Factura</h5>
+        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#nuevaLineaModal">
+          Añadir Línea
+        </button>
+      </div>
+      <div class="card-body">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Concepto</th>
+              <th>Descripción</th>
+              <th>Cantidad</th>
+              <th>Precio Unit.</th>
+              <th>Importe</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for linea in lineas %}
+            <tr>
+              <td>{{ linea.concepto }}</td>
+              <td>{{ linea.descripcion }}</td>
+              <td>{{ linea.cantidad }}</td>
+              <td>{{ "%.2f"|format(linea.precio_unitario) }} €</td>
+              <td>{{ "%.2f"|format(linea.importe) }} €</td>
+              <td>
+                <button type="button" class="btn btn-sm btn-outline-secondary" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#editarLineaModal{{ linea.id }}"
+                        title="Editar línea">
+                  Editar
+                </button>
+                <form action="{{ url_for('facturas.eliminar_linea', id=linea.id) }}" method="post" style="display:inline;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Está seguro de eliminar esta línea?');" title="Eliminar línea">
+                    Eliminar
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        
+        {% if not lineas %}
+        <div class="alert alert-info mt-3">
+          No hay líneas en esta factura. Utilice el botón "Añadir Línea" para agregar elementos.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- BOTONES FINALES -->
+    <div class="d-flex justify-content-end align-items-center mb-4">
+      <button type="submit" class="btn btn-success" title="Guardar Cambios">Guardar Cambios</button>
+      <a href="{{ url_for('facturas.listar_facturas') }}" class="btn btn-secondary ms-2" title="Cancelar la edición">Cancelar</a>
+      <a href="{{ url_for('facturas.generar_pdf', id=factura.id) }}" class="btn btn-outline-danger ms-2" title="Generar PDF">
+        Generar PDF
+      </a>
+    </div>
+  </form>
+
+  <!-- Modal para añadir nueva línea -->
+  <div class="modal fade" id="nuevaLineaModal" tabindex="-1" aria-labelledby="nuevaLineaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="nuevaLineaModalLabel">Añadir Nueva Línea</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="{{ url_for('facturas.nueva_linea', id_factura=factura.id) }}" method="post">
+          <div class="modal-body">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="mb-3">
+              <label for="concepto" class="form-label">Concepto</label>
+              <input type="text" class="form-control" id="concepto" name="concepto" required>
+            </div>
+            
+            <div class="mb-3">
+              <label for="descripcion" class="form-label">Descripción</label>
+              <textarea class="form-control" id="descripcion" name="descripcion" rows="3"></textarea>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="cantidad" class="form-label">Cantidad</label>
+                <input type="number" step="0.01" class="form-control" id="cantidad" name="cantidad" value="1" required>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="precio_unitario" class="form-label">Precio Unitario (€)</label>
+                <input type="number" step="0.01" class="form-control" id="precio_unitario" name="precio_unitario" required>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="importe_calculado" class="form-label">Importe (€)</label>
+                <input type="number" step="0.01" class="form-control" id="importe_calculado" readonly>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Añadir Línea</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modales para editar líneas -->
+  {% for linea in lineas %}
+  <div class="modal fade" id="editarLineaModal{{ linea.id }}" tabindex="-1" aria-labelledby="editarLineaModalLabel{{ linea.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editarLineaModalLabel{{ linea.id }}">Editar Línea</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="{{ url_for('facturas.editar_linea', id=linea.id) }}" method="post">
+          <div class="modal-body">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="id_factura" value="{{ factura.id }}">
+            
+            <div class="mb-3">
+              <label for="concepto{{ linea.id }}" class="form-label">Concepto</label>
+              <input type="text" class="form-control" id="concepto{{ linea.id }}" name="concepto" value="{{ linea.concepto }}" required>
+            </div>
+            
+            <div class="mb-3">
+              <label for="descripcion{{ linea.id }}" class="form-label">Descripción</label>
+              <textarea class="form-control" id="descripcion{{ linea.id }}" name="descripcion" rows="3">{{ linea.descripcion }}</textarea>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="cantidad{{ linea.id }}" class="form-label">Cantidad</label>
+                <input type="number" step="0.01" class="form-control" id="cantidad{{ linea.id }}" name="cantidad" value="{{ linea.cantidad }}" required>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="precio_unitario{{ linea.id }}" class="form-label">Precio Unitario (€)</label>
+                <input type="number" step="0.01" class="form-control" id="precio_unitario{{ linea.id }}" name="precio_unitario" value="{{ linea.precio_unitario }}" required>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="importe_calculado{{ linea.id }}" class="form-label">Importe (€)</label>
+                <input type="number" step="0.01" class="form-control" id="importe_calculado{{ linea.id }}" value="{{ linea.importe }}" readonly>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Cálculo automático de importe en nueva línea
+    const cantidadInput = document.getElementById('cantidad');
+    const precioInput = document.getElementById('precio_unitario');
+    const importeInput = document.getElementById('importe_calculado');
+    
+    function calcularImporte() {
+      const cantidad = parseFloat(cantidadInput.value) || 0;
+      const precio = parseFloat(precioInput.value) || 0;
+      importeInput.value = (cantidad * precio).toFixed(2);
+    }
+    
+    cantidadInput.addEventListener('input', calcularImporte);
+    precioInput.addEventListener('input', calcularImporte);
+    
+    // Cálculo automático de importe en editar líneas
+    {% for linea in lineas %}
+    const cantidadInput{{ linea.id }} = document.getElementById('cantidad{{ linea.id }}');
+    const precioInput{{ linea.id }} = document.getElementById('precio_unitario{{ linea.id }}');
+    const importeInput{{ linea.id }} = document.getElementById('importe_calculado{{ linea.id }}');
+    
+    function calcularImporte{{ linea.id }}() {
+      const cantidad = parseFloat(cantidadInput{{ linea.id }}.value) || 0;
+      const precio = parseFloat(precioInput{{ linea.id }}.value) || 0;
+      importeInput{{ linea.id }}.value = (cantidad * precio).toFixed(2);
+    }
+    
+    cantidadInput{{ linea.id }}.addEventListener('input', calcularImporte{{ linea.id }});
+    precioInput{{ linea.id }}.addEventListener('input', calcularImporte{{ linea.id }});
+    {% endfor %}
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,109 @@
+<!-- app/templates/presupuestos/por_proyecto.html -->
+{% extends 'layout/base.html' %}
+{% from 'layout/components.html' import action_buttons, confirmation_modal %}
+
+{% block title %}AM3.1 - Presupuestos de {{ proyecto.nombre_proyecto or proyecto.referencia }}{% endblock %}
+
+{% block page_title %}Presupuestos del Proyecto{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="alert alert-info">
+            <h5><i class="fas fa-project-diagram"></i> Datos del Proyecto</h5>
+            <p><strong>Referencia:</strong> {{ proyecto.referencia }}</p>
+            <p><strong>Nombre:</strong> {{ proyecto.nombre_proyecto or 'Sin nombre' }}</p>
+            <p><strong>Cliente:</strong> {{ proyecto.cliente.nombre if proyecto.cliente else 'Sin cliente' }}</p>
+            <p><strong>Dirección:</strong> 
+                {% if proyecto.direccion_completa %}
+                    {{ proyecto.direccion_completa }}
+                {% else %}
+                    <em>No especificada</em>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('proyectos.listar_proyectos') }}" class="btn btn-secondary mb-2">
+            <i class="fas fa-arrow-left"></i> Volver a Proyectos
+        </a>
+        <a href="{{ url_for('presupuestos.nuevo_presupuesto', id_proyecto=proyecto.id) }}" class="btn btn-primary mb-2">
+            <i class="fas fa-plus"></i> Nuevo Presupuesto
+        </a>
+        <a href="{{ url_for('proyectos.editar_proyecto', id=proyecto.id) }}" class="btn btn-warning mb-2">
+            <i class="fas fa-edit"></i> Editar Proyecto
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Listado de Presupuestos</h5>
+    </div>
+    <div class="card-body">
+        {% if presupuestos %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Referencia</th>
+                        <th>Fecha</th>
+                        <th>Título</th>
+                        <th>Técnico</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for presupuesto in presupuestos %}
+                    <tr>
+                        <td>{{ presupuesto.referencia }}</td>
+                        <td>{{ presupuesto.fecha.strftime('%d/%m/%Y') if presupuesto.fecha else 'No especificada' }}</td>
+                        <td>{{ presupuesto.titulo or 'Sin título' }}</td>
+                        <td>{{ presupuesto.tecnico_encargado or 'No asignado' }}</td>
+                        <td>
+                            <span class="badge {% if presupuesto.estado == 'Aprobado' %}bg-success{% elif presupuesto.estado == 'Rechazado' %}bg-danger{% elif presupuesto.estado == 'Borrador' %}bg-secondary{% else %}bg-primary{% endif %}">
+                                {{ presupuesto.estado }}
+                            </span>
+                        </td>
+                        <td>
+                            {{ action_buttons(
+                                edit_url=url_for('presupuestos.editar_presupuesto', id=presupuesto.id),
+                                delete_url=url_for('presupuestos.eliminar_presupuesto', id=presupuesto.id),
+                                custom_buttons=[
+                                    {
+                                        'url': url_for('presupuestos.generar_pdf', id=presupuesto.id),
+                                        'class': 'btn-info',
+                                        'icon': 'fas fa-file-pdf',
+                                        'title': 'Generar PDF'
+                                    },
+                                    {
+                                        'url': url_for('facturas.facturar_desde_presupuesto', id_presupuesto=presupuesto.id),
+                                        'class': 'btn-success',
+                                        'icon': 'fas fa-file-invoice-dollar',
+                                        'title': 'Facturar Presupuesto'
+                                    }
+                                ]
+                            ) }}
+                            
+                            {{ confirmation_modal(
+                                id='delete-modal-' + presupuesto.id|string,
+                                title='Confirmar eliminación',
+                                message='¿Está seguro de que desea eliminar el presupuesto?',
+                                action_url=url_for('presupuestos.eliminar_presupuesto', id=presupuesto.id)
+                            ) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <h4 class="text-muted"><i class="fas fa-folder-open"></i> No hay presupuestos registrados para este proyecto</h4>
+            <p>Para crear un nuevo presupuesto, haga clic en el botón "Nuevo Presupuesto" en la parte superior derecha.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

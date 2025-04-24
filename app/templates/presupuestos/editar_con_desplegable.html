@@ -1,0 +1,666 @@
+<!-- app/templates/presupuestos/editar.html -->
+{% extends 'layout/base.html' %}
+{% from 'layout/components.html' import form_group, direccion_form, confirmation_modal %}
+
+{% block title %}AM3.1 - Editar Presupuesto{% endblock %}
+
+{% block page_title %}Editar Presupuesto{% endblock %}
+
+{% block content %}
+<div>
+{% set capitulos_options = [
+  "Trabajos preliminares",
+  "Demoliciones",
+  "Movimiento de tierras",
+  "Cimentaciones",
+  "Estructuras",
+  "Albañilería",
+  "Carpintería",
+  "Instalaciones eléctricas",
+  "Instalaciones de fontanería",
+  "Instalaciones de climatización",
+  "Instalaciones de telecomunicaciones",
+  "Pinturas y acabados finales",
+  "Urbanización y exteriores",
+  "Servicios documentales",
+  "Otros"
+] %}
+
+<div class="mb-3">
+    <div class="row align-items-center">
+        <div class="col-md-9">
+            <div class="alert alert-info py-2 mb-0 d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-file-invoice-dollar fa-2x"></i>
+                </div>
+                <div class="d-flex flex-grow-1 flex-wrap">
+                    <div class="me-3"><strong>Presupuesto:</strong> {{ presupuesto.referencia }}</div>
+                    <div class="me-3"><strong>Proyecto:</strong> {{ proyecto.referencia }}</div>
+                    <div class="me-3"><strong>Cliente:</strong> {{ cliente.nombre }}</div>
+                    <div class="me-3">
+                        <span class="badge {% if presupuesto.estado == 'Borrador' %}bg-warning{% elif presupuesto.estado == 'Enviado' %}bg-info{% elif presupuesto.estado == 'Aprobado' %}bg-success{% elif presupuesto.estado == 'Rechazado' %}bg-danger{% else %}bg-secondary{% endif %}">{{ presupuesto.estado }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 text-end">
+            <a href="{{ url_for('presupuestos.presupuestos_por_proyecto', id_proyecto=proyecto.id) }}" class="btn btn-sm btn-secondary me-1">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+            <a href="{{ url_for('presupuestos.generar_pdf', id=presupuesto.id) }}" class="btn btn-sm btn-primary me-1" target="_blank">
+                <i class="fas fa-file-pdf"></i> PDF
+            </a>
+            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#clonarModal">
+                <i class="fas fa-copy"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<form method="post" action="{{ url_for('presupuestos.editar_presupuesto', id=presupuesto.id) }}" id="presupuesto-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <!-- Columna izquierda: Datos básicos y Dirección -->
+                <div class="col-md-6">
+                    <h5 class="card-title mb-2">Datos Básicos</h5>
+                    <div class="row">
+                        <div class="col-md-8">
+                            {{ form_group('titulo', 'Título del Presupuesto', required=true, value=presupuesto.titulo) }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form_group('tecnico_encargado', 'Técnico', type='select', options=[
+                                {'value': 'Blas', 'label': 'Blas'},
+                                {'value': 'Alejandro', 'label': 'Alejandro'},
+                                {'value': 'Toni', 'label': 'Toni'}
+                            ], selected_value=presupuesto.tecnico_encargado) }}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-7">
+                            {{ form_group('estado', 'Estado', type='select', options=[
+                                {'value': 'Borrador', 'label': 'Borrador'},
+                                {'value': 'Enviado', 'label': 'Enviado'},
+                                {'value': 'Aprobado', 'label': 'Aprobado'},
+                                {'value': 'Rechazado', 'label': 'Rechazado'}
+                            ], selected_value=presupuesto.estado) }}
+                        </div>
+                        <div class="col-md-5">
+                            {{ form_group('aprobacion', 'Aprobación', type='select', options=[
+                                {'value': '', 'label': 'Sin aprobar'},
+                                {'value': 'Verbal', 'label': 'Verbal'},
+                                {'value': 'Escrita', 'label': 'Escrita'},
+                                {'value': 'Email', 'label': 'Email'}
+                            ], selected_value=presupuesto.aprobacion) }}
+                        </div>
+                    </div>
+                    
+                    <h5 class="card-title mb-2 mt-3">Dirección de Obra</h5>
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-3">
+                            {{ form_group('tipo_via', 'Tipo de Vía', type='select', options=[
+                                {'value': 'Calle', 'label': 'Calle'},
+                                {'value': 'Avenida', 'label': 'Avenida'},
+                                {'value': 'Plaza', 'label': 'Plaza'},
+                                {'value': 'Paseo', 'label': 'Paseo'},
+                                {'value': 'Carretera', 'label': 'Carretera'},
+                                {'value': 'Camino', 'label': 'Camino'},
+                                {'value': 'Otro', 'label': 'Otro'}
+                            ], selected_value=presupuesto.tipo_via) }}
+                        </div>
+                        <div class="col-md-9">
+                            {{ form_group('nombre_via', 'Nombre de la Vía', value=presupuesto.nombre_via) }}
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-2">
+                            {{ form_group('numero_via', 'Número', value=presupuesto.numero_via) }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form_group('puerta', 'Puerta/Piso', value=presupuesto.puerta) }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form_group('codigo_postal', 'Código Postal', value=presupuesto.codigo_postal) }}
+                        </div>
+                        <div class="col-md-5">
+                            {{ form_group('poblacion', 'Población', value=presupuesto.poblacion) }}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Columna derecha: Notas Adicionales -->
+                <div class="col-md-6">
+                    <h5 class="card-title mb-2">Notas Adicionales</h5>
+                    {{ form_group('notas', 'Información adicional, condiciones, plazos...', type='textarea', rows=10, value=presupuesto.notas) }}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-footer text-end">
+            <a href="{{ url_for('presupuestos.presupuestos_por_proyecto', id_proyecto=proyecto.id) }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+    </div>
+</form>
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-list"></i> Capítulos y Partidas</h5>
+        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#nuevoCapituloModal">
+            <i class="fas fa-plus"></i> Nuevo Capítulo
+        </button>
+    </div>
+    <div class="card-body">
+        {% for capitulo in capitulos %}
+        <div class="card mb-3">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">{{ capitulo.numero }}. {{ capitulo.descripcion }}</h6>
+                <div>
+                    <button type="button" class="btn btn-sm btn-info" 
+                            onclick="editarCapitulo('{{ capitulo.id }}', '{{ capitulo.numero }}', '{{ capitulo.descripcion }}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger" 
+                            data-bs-toggle="modal" data-bs-target="#eliminarCapituloModal{{ capitulo.id }}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success" 
+                            data-bs-toggle="modal" data-bs-target="#nuevaPartidaModal" 
+                            onclick="seleccionarCapitulo('{{ capitulo.numero }}')">
+                        <i class="fas fa-plus"></i> Partida
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px">Número</th>
+                                <th>Descripción</th>
+                                <th>Unidad</th>
+                                <th class="text-end">Cantidad</th>
+                                <th class="text-end">Precio</th>
+                                <th class="text-end">Total</th>
+                                <th class="text-end">Margen %</th>
+                                <th class="text-end">Final</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set partidas = partidas_por_capitulo.get(capitulo.numero, []) %}
+                            {% if partidas %}
+                                {% for partida in partidas %}
+                                <tr>
+                                    <td>{{ partida.numero }}</td>
+                                    <td>{{ partida.descripcion }}</td>
+                                    <td>{{ partida.unitario }}</td>
+                                    <td class="text-end">{{ partida.cantidad|round(2) }}</td>
+                                    <td class="text-end">{{ partida.precio|round(2) }} €</td>
+                                    <td class="text-end">{{ partida.total|round(2) }} €</td>
+                                    <td class="text-end">{{ partida.margen }} %</td>
+                                    <td class="text-end">{{ partida.final|round(2) }} €</td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-info" 
+                                                onclick="editarPartida(
+                                                    '{{ partida.id }}', 
+                                                    '{{ partida.capitulo_numero }}',
+                                                    '{{ partida.numero }}',
+                                                    '{{ partida.descripcion }}',
+                                                    '{{ partida.unitario }}',
+                                                    '{{ partida.cantidad }}',
+                                                    '{{ partida.precio }}',
+                                                    '{{ partida.margen }}'
+                                                )">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger" 
+                                                data-bs-toggle="modal" data-bs-target="#eliminarPartidaModal{{ partida.id }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-light">
+                                    <td colspan="7" class="text-end"><strong>Subtotal del capítulo:</strong></td>
+                                    <td class="text-end">
+                                        <strong>
+                                            {% set subtotal = 0 %}
+                                            {% for partida in partidas %}
+                                                {% set subtotal = subtotal + partida.final %}
+                                            {% endfor %}
+                                            {{ subtotal|round(2) }} €
+                                        </strong>
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center">No hay partidas en este capítulo</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal para eliminar capítulo -->
+        <div class="modal fade" id="eliminarCapituloModal{{ capitulo.id }}" tabindex="-1" aria-labelledby="eliminarCapituloModalLabel{{ capitulo.id }}" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="eliminarCapituloModalLabel{{ capitulo.id }}">Confirmar eliminación</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>¿Está seguro de que desea eliminar el capítulo <strong>{{ capitulo.numero }}. {{ capitulo.descripcion }}</strong>?</p>
+                        <p class="text-danger">Esta acción eliminará también todas las partidas asociadas a este capítulo.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <form action="{{ url_for('presupuestos.eliminar_capitulo', id=capitulo.id) }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-danger">Eliminar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modales para eliminar partidas -->
+        {% for partida in partidas_por_capitulo.get(capitulo.numero, []) %}
+        <div class="modal fade" id="eliminarPartidaModal{{ partida.id }}" tabindex="-1" aria-labelledby="eliminarPartidaModalLabel{{ partida.id }}" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="eliminarPartidaModalLabel{{ partida.id }}">Confirmar eliminación</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>¿Está seguro de que desea eliminar la partida <strong>{{ partida.descripcion }}</strong>?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <form action="{{ url_for('presupuestos.eliminar_partida', id=partida.id) }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-danger">Eliminar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% endfor %}
+        
+        <!-- Total del presupuesto -->
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        {% if capitulos %}
+                        <h5>Resumen del Presupuesto</h5>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Capítulo</th>
+                                    <th class="text-end">Importe</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set total_presupuesto = 0 %}
+                                {% for capitulo in capitulos %}
+                                    {% set subtotal = 0 %}
+                                    {% for partida in partidas_por_capitulo.get(capitulo.numero, []) %}
+                                        {% set subtotal = subtotal + partida.final %}
+                                    {% endfor %}
+                                    {% set total_presupuesto = total_presupuesto + subtotal %}
+                                <tr>
+                                    <td>{{ capitulo.numero }}. {{ capitulo.descripcion }}</td>
+                                    <td class="text-end">{{ subtotal|round(2) }} €</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-light">
+                                    <td><strong>TOTAL PRESUPUESTO</strong></td>
+                                    <td class="text-end"><strong>{{ total_presupuesto|round(2) }} €</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <p class="text-center">Añada capítulos y partidas para generar el presupuesto</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <!-- Información adicional aquí si fuera necesario -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para nuevo capítulo -->
+<div class="modal fade" id="nuevoCapituloModal" tabindex="-1" aria-labelledby="nuevoCapituloModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="nuevoCapituloModalLabel">Nuevo Capítulo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('presupuestos.nuevo_capitulo', id_presupuesto=presupuesto.id) }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label for="descripcion" class="form-label">Descripción</label>
+                        <select class="form-select" id="descripcion" name="descripcion" required>
+                            <option value="">Seleccione tipo de capítulo</option>
+                            {% for opcion in capitulos_options %}
+                            <option value="{{ opcion }}">{{ opcion }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para editar capítulo -->
+<div class="modal fade" id="editarCapituloModal" tabindex="-1" aria-labelledby="editarCapituloModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editarCapituloModalLabel">Editar Capítulo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEditarCapitulo" action="" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="id_presupuesto" value="{{ presupuesto.id }}">
+                    <div class="mb-3">
+                        <label for="editar_descripcion" class="form-label">Descripción</label>
+                        <select class="form-select" id="editar_descripcion" name="descripcion" required>
+                            <option value="">Seleccione tipo de capítulo</option>
+                            {% for opcion in capitulos_options %}
+                            <option value="{{ opcion }}">{{ opcion }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para nueva partida -->
+<div class="modal fade" id="nuevaPartidaModal" tabindex="-1" aria-labelledby="nuevaPartidaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="nuevaPartidaModalLabel">Nueva Partida</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('presupuestos.nueva_partida', id_presupuesto=presupuesto.id) }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label for="capitulo_numero" class="form-label">Capítulo</label>
+                        <select class="form-select" id="capitulo_numero" name="capitulo_numero" required>
+                            {% for capitulo in capitulos %}
+                            <option value="{{ capitulo.numero }}">{{ capitulo.numero }}. {{ capitulo.descripcion }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="descripcion_partida" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="descripcion_partida" name="descripcion" rows="2" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="unitario" class="form-label">Unidad de Medida</label>
+                                <select class="form-select" id="unitario" name="unitario" required>
+                                    <option value="">Seleccione</option>
+                                    <option value="ML">ML</option>
+                                    <option value="M2">M2</option>
+                                    <option value="M3">M3</option>
+                                    <option value="PA">PA</option>
+                                    <option value="UD">UD</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="cantidad" class="form-label">Cantidad</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="cantidad" name="cantidad" value="0" onchange="calcularTotal()">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="precio" class="form-label">Precio Unitario (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="precio" name="precio" value="0" onchange="calcularTotal()">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="total" class="form-label">Total (€)</label>
+                                <input type="number" step="0.01" class="form-control" id="total" name="total" value="0" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="margen" class="form-label">Margen (%)</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="margen" name="margen" value="40" onchange="calcularFinal()">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="final" class="form-label">Precio Final (€)</label>
+                                <input type="number" step="0.01" class="form-control" id="final" name="final" value="0" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para editar partida -->
+<div class="modal fade" id="editarPartidaModal" tabindex="-1" aria-labelledby="editarPartidaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editarPartidaModalLabel">Editar Partida</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEditarPartida" action="" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="id_presupuesto" value="{{ presupuesto.id }}">
+                    <div class="mb-3">
+                        <label for="editar_partida_capitulo" class="form-label">Capítulo</label>
+                        <select class="form-select" id="editar_partida_capitulo" name="capitulo_numero" required>
+                            {% for capitulo in capitulos %}
+                            <option value="{{ capitulo.numero }}">{{ capitulo.numero }}. {{ capitulo.descripcion }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editar_partida_numero_display" class="form-label">Número</label>
+                        <input type="text" class="form-control" id="editar_partida_numero_display" readonly>
+                        <input type="hidden" id="editar_partida_numero" name="numero">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editar_partida_descripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="editar_partida_descripcion" name="descripcion" rows="2" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="editar_partida_unitario" class="form-label">Unidad de Medida</label>
+                                <select class="form-select" id="editar_partida_unitario" name="unitario" required>
+                                    <option value="">Seleccione</option>
+                                    <option value="ML">ML</option>
+                                    <option value="M2">M2</option>
+                                    <option value="M3">M3</option>
+                                    <option value="PA">PA</option>
+                                    <option value="UD">UD</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="editar_partida_cantidad" class="form-label">Cantidad</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="editar_partida_cantidad" name="cantidad" onchange="calcularTotalEditar()">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="editar_partida_precio" class="form-label">Precio Unitario (€)</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="editar_partida_precio" name="precio" onchange="calcularTotalEditar()">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="editar_partida_total" class="form-label">Total (€)</label>
+                                <input type="number" step="0.01" class="form-control" id="editar_partida_total" name="total" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editar_partida_margen" class="form-label">Margen (%)</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="editar_partida_margen" name="margen" onchange="calcularFinalEditar()">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editar_partida_final" class="form-label">Precio Final (€)</label>
+                                <input type="number" step="0.01" class="form-control" id="editar_partida_final" name="final" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para clonar presupuesto -->
+<div class="modal fade" id="clonarModal" tabindex="-1" aria-labelledby="clonarModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="clonarModalLabel">Clonar Presupuesto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Desea crear una copia de este presupuesto?</p>
+                <p>Se creará un nuevo presupuesto con todos los capítulos y partidas, pero con un nuevo número de referencia.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form action="{{ url_for('presupuestos.clonar_presupuesto', id=presupuesto.id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-success">Clonar Presupuesto</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Script específico para presupuestos -->
+<script src="{{ url_for('static', filename='js/partidas.js') }}"></script>
+
+<script>
+    window.presupuestoId = {{ presupuesto.id }};
+
+    function calcularTotal() {
+        const cantidad = parseFloat(document.getElementById('cantidad').value) || 0;
+        const precio = parseFloat(document.getElementById('precio').value) || 0;
+        const total = cantidad * precio;
+        document.getElementById('total').value = total.toFixed(2);
+        calcularFinal();
+    }
+    
+    function calcularFinal() {
+        const total = parseFloat(document.getElementById('total').value) || 0;
+        const margen = parseFloat(document.getElementById('margen').value) || 0;
+        const final = total * (1 + margen / 100);
+        document.getElementById('final').value = final.toFixed(2);
+    }
+    
+    function calcularTotalEditar() {
+        const cantidad = parseFloat(document.getElementById('editar_partida_cantidad').value) || 0;
+        const precio = parseFloat(document.getElementById('editar_partida_precio').value) || 0;
+        const total = cantidad * precio;
+        document.getElementById('editar_partida_total').value = total.toFixed(2);
+        calcularFinalEditar();
+    }
+    
+    function calcularFinalEditar() {
+        const total = parseFloat(document.getElementById('editar_partida_total').value) || 0;
+        const margen = parseFloat(document.getElementById('editar_partida_margen').value) || 0;
+        const final = total * (1 + margen / 100);
+        document.getElementById('editar_partida_final').value = final.toFixed(2);
+    }
+    
+    function seleccionarCapitulo(numero) {
+        document.getElementById('capitulo_numero').value = numero;
+    }
+    
+    function editarCapitulo(id, numero, descripcion) {
+        document.getElementById('formEditarCapitulo').action = "{{ url_for('presupuestos.editar_capitulo', id='') }}" + id;
+        document.getElementById('editar_descripcion').value = descripcion;
+        
+        const modal = new bootstrap.Modal(document.getElementById('editarCapituloModal'));
+        modal.show();
+    }
+    
+    function editarPartida(id, capitulo_numero, numero, descripcion, unitario, cantidad, precio, margen) {
+        document.getElementById('formEditarPartida').action = "{{ url_for('presupuestos.editar_partida', id='') }}" + id;
+        document.getElementById('editar_partida_capitulo').value = capitulo_numero;
+        
+        // Mostrar el número real de la partida
+        document.getElementById('editar_partida_numero_display').value = numero || (capitulo_numero + '.?');
+        document.getElementById('editar_partida_numero').value = numero;
+        
+        document.getElementById('editar_partida_descripcion').value = descripcion;
+        document.getElementById('editar_partida_unitario').value = unitario;
+        document.getElementById('editar_partida_cantidad').value = cantidad;
+        document.getElementById('editar_partida_precio').value = precio;
+        document.getElementById('editar_partida_margen').value = margen;
+        
+        // Calcular el total y final
+        calcularTotalEditar();
+        
+        const modal = new bootstrap.Modal(document.getElementById('editarPartidaModal'));
+        modal.show();
+    }
+</script>
+{% endblock %}

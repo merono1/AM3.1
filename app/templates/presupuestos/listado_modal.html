@@ -1,0 +1,59 @@
+<!-- app/templates/presupuestos/listado_modal.html -->
+{% from 'layout/components.html' import action_buttons %}
+
+<h5 class="mb-3">Presupuestos de {{ proyecto.nombre_proyecto or proyecto.referencia }}</h5>
+
+{% if presupuestos %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover table-sm">
+        <thead>
+            <tr>
+                <th>Referencia</th>
+                <th>Fecha</th>
+                <th>Título</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for presupuesto in presupuestos %}
+            <tr>
+                <td>{{ presupuesto.referencia }}</td>
+                <td>{{ presupuesto.fecha.strftime('%d/%m/%Y') if presupuesto.fecha else 'No especificada' }}</td>
+                <td>{{ presupuesto.titulo or 'Sin título' }}</td>
+                <td>
+                    <span class="badge {% if presupuesto.estado == 'Aprobado' %}bg-success{% elif presupuesto.estado == 'Rechazado' %}bg-danger{% elif presupuesto.estado == 'Borrador' %}bg-secondary{% else %}bg-primary{% endif %}">
+                        {{ presupuesto.estado }}
+                    </span>
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="{{ url_for('presupuestos.editar_presupuesto', id=presupuesto.id) }}" class="btn btn-primary" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{{ url_for('presupuestos.generar_pdf', id=presupuesto.id) }}" class="btn btn-info" title="PDF">
+                            <i class="fas fa-file-pdf"></i>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="mt-3">
+    <a href="{{ url_for('presupuestos.presupuestos_por_proyecto', id_proyecto=proyecto.id) }}" class="btn btn-secondary btn-sm">
+        <i class="fas fa-list"></i> Ver todos los presupuestos
+    </a>
+    <a href="{{ url_for('presupuestos.nuevo_presupuesto', id_proyecto=proyecto.id) }}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus"></i> Nuevo presupuesto
+    </a>
+</div>
+{% else %}
+<div class="text-center py-4">
+    <p class="text-muted"><i class="fas fa-folder-open"></i> No hay presupuestos registrados para este proyecto</p>
+    <a href="{{ url_for('presupuestos.nuevo_presupuesto', id_proyecto=proyecto.id) }}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus"></i> Crear presupuesto
+    </a>
+</div>
+{% endif %}

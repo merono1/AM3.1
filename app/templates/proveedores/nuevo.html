@@ -1,0 +1,308 @@
+{% extends "layout/base.html" %}
+
+{% block title %}AM3.1 - Nuevo Proveedor{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-md-12">
+      <h2 class="mb-4">Nuevo Proveedor</h2>
+      
+      <div class="card shadow">
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('proveedores.nuevo_proveedor') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="row mb-3">
+              <!-- Tipo de proveedor -->
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label for="tipo" class="form-label">Tipo de Proveedor</label>
+                  <select name="tipo" id="tipo" class="form-select" required onchange="actualizarEspecialidades()">
+                    <option value="">Seleccione un tipo</option>
+                    <option value="Servicios">Servicios</option>
+                    <option value="Suministros">Suministros</option>
+                  </select>
+                </div>
+              </div>
+              <!-- Nombre -->
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label for="nombre" class="form-label">Nombre*</label>
+                  <input type="text" name="nombre" id="nombre" class="form-control" required>
+                </div>
+              </div>
+              <!-- Razón Social -->
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label for="razon_social" class="form-label">Razón Social</label>
+                  <input type="text" name="razon_social" id="razon_social" class="form-control">
+                </div>
+              </div>
+            </div>
+            
+            <div class="row mb-3">
+              <!-- Dirección -->
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="direccion" class="form-label">Dirección</label>
+                  <input type="text" name="direccion" id="direccion" class="form-control">
+                </div>
+              </div>
+              <!-- Código Postal -->
+              <div class="col-md-2">
+                <div class="form-group">
+                  <label for="codigo_postal" class="form-label">Código Postal</label>
+                  <input type="text" name="codigo_postal" id="codigo_postal" class="form-control">
+                </div>
+              </div>
+              <!-- Localidad -->
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label for="localidad" class="form-label">Localidad</label>
+                  <input type="text" name="localidad" id="localidad" class="form-control">
+                </div>
+              </div>
+            </div>
+            
+            <div class="row mb-3">
+              <!-- Provincia -->
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label for="provincia" class="form-label">Provincia</label>
+                  <input type="text" name="provincia" id="provincia" class="form-control">
+                </div>
+              </div>
+              <!-- País -->
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label for="pais" class="form-label">País</label>
+                  <input type="text" name="pais" id="pais" class="form-control" value="España">
+                </div>
+              </div>
+              <!-- Especialidad -->
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label for="especialidad" class="form-label">Especialidad</label>
+                  <select name="especialidad" id="especialidad" class="form-select">
+                    <option value="">Seleccione una especialidad</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            <h4 class="mt-4 mb-3">Datos de Contacto</h4>
+            
+            <div class="row mb-3">
+              <!-- Teléfono 1 -->
+              <div class="col-md-3">
+                <div class="form-group">
+                  <label for="telefono1" class="form-label">Teléfono 1</label>
+                  <input type="text" name="telefono1" id="telefono1" class="form-control">
+                </div>
+              </div>
+              <!-- Teléfono 2 -->
+              <div class="col-md-3">
+                <div class="form-group">
+                  <label for="telefono2" class="form-label">Teléfono 2</label>
+                  <input type="text" name="telefono2" id="telefono2" class="form-control">
+                </div>
+              </div>
+              <!-- Email 1 -->
+              <div class="col-md-3">
+                <div class="form-group">
+                  <label for="email1" class="form-label">Email 1</label>
+                  <input type="email" name="email1" id="email1" class="form-control">
+                </div>
+              </div>
+              <!-- Email 2 -->
+              <div class="col-md-3">
+                <div class="form-group">
+                  <label for="email2" class="form-label">Email 2</label>
+                  <input type="email" name="email2" id="email2" class="form-control">
+                </div>
+              </div>
+            </div>
+            
+            <div class="row mb-3">
+              <!-- Teléfono 3 -->
+              <div class="col-md-3">
+                <div class="form-group">
+                  <label for="telefono3" class="form-label">Teléfono 3</label>
+                  <input type="text" name="telefono3" id="telefono3" class="form-control">
+                </div>
+              </div>
+              <!-- Teléfono 4 -->
+              <div class="col-md-3">
+                <div class="form-group">
+                  <label for="telefono4" class="form-label">Teléfono 4</label>
+                  <input type="text" name="telefono4" id="telefono4" class="form-control">
+                </div>
+              </div>
+            </div>
+            
+            <h4 class="mt-4 mb-3">Persona de Contacto</h4>
+            
+            <div class="row mb-3">
+              <!-- Nombre Contacto -->
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="contacto" class="form-label">Nombre de Contacto</label>
+                  <input type="text" name="contacto" id="contacto" class="form-control">
+                </div>
+              </div>
+              <!-- Email Contacto -->
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="contacto_email" class="form-label">Email de Contacto</label>
+                  <input type="email" name="contacto_email" id="contacto_email" class="form-control">
+                </div>
+              </div>
+            </div>
+            
+            <div class="row mb-3">
+              <!-- Teléfono Contacto 1 -->
+              <div class="col-md-3">
+                <div class="form-group">
+                  <label for="contacto_telefono1" class="form-label">Teléfono de Contacto 1</label>
+                  <input type="text" name="contacto_telefono1" id="contacto_telefono1" class="form-control">
+                </div>
+              </div>
+              <!-- Teléfono Contacto 2 -->
+              <div class="col-md-3">
+                <div class="form-group">
+                  <label for="contacto_telefono2" class="form-label">Teléfono de Contacto 2</label>
+                  <input type="text" name="contacto_telefono2" id="contacto_telefono2" class="form-control">
+                </div>
+              </div>
+            </div>
+            
+            <div class="row mb-3">
+              <!-- Notas -->
+              <div class="col-md-12">
+                <div class="form-group">
+                  <label for="notas" class="form-label">Notas</label>
+                  <textarea name="notas" id="notas" class="form-control" rows="4"></textarea>
+                </div>
+              </div>
+            </div>
+            
+            <div class="row mt-4">
+              <div class="col-md-12 text-end">
+                <a href="{{ url_for('proveedores.listar_proveedores') }}" class="btn btn-secondary me-2">
+                  Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-save me-1"></i> Guardar Proveedor
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Listas de especialidades para cada tipo de proveedor
+  const especialidadesServicios = [
+    "Demoliciones",
+    "Movimiento de tierras",
+    "Cimentaciones",
+    "Estructuras",
+    "Albañilería",
+    "Cubiertas",
+    "Aislamientos e impermeabilizaciones",
+    "Revestimientos",
+    "Carpintería",
+    "Cerrajería",
+    "Vidriería",
+    "Pinturas",
+    "Instalaciones eléctricas",
+    "Instalaciones de fontanería",
+    "Instalaciones de climatización",
+    "Instalaciones especiales",
+    "Instalaciones contra incendios",
+    "Urbanización",
+    "Jardinería",
+    "Gestión de residuos",
+    "Seguridad y salud",
+    "Control de calidad",
+    "Otros servicios"
+  ];
+  
+  const especialidadesSuministros = [
+    "Materiales generales de construcción",
+    "Materiales estructurales (aceros y ferrallas)",
+    "Materiales de fontanería y saneamiento",
+    "Materiales eléctricos e iluminación",
+    "Materiales de carpintería y madera",
+    "Materiales de revestimientos y acabados",
+    "Materiales de aislamiento térmico y acústico",
+    "Materiales de impermeabilización",
+    "Pinturas y tratamientos superficiales",
+    "Herramientas manuales y eléctricas",
+    "Equipos y maquinaria de obra",
+    "Elementos de ferretería y fijaciones",
+    "Materiales químicos y aditivos",
+    "Equipos de seguridad y protección laboral",
+    "Equipos de medición y control",
+    "Materiales para exteriores y mobiliario urbano",
+    "Consumibles y protección temporal",
+    "Otros"
+  ];
+  
+  // Función para actualizar el dropdown de especialidades según el tipo seleccionado
+  function actualizarEspecialidades() {
+    const tipoProveedor = document.getElementById('tipo').value;
+    const selectEspecialidad = document.getElementById('especialidad');
+    
+    // Limpiar las opciones actuales
+    selectEspecialidad.innerHTML = '<option value="">Seleccione una especialidad</option>';
+    
+    // Agregar las nuevas opciones según el tipo seleccionado
+    let listaEspecialidades = [];
+    if (tipoProveedor === 'Servicios') {
+      listaEspecialidades = especialidadesServicios;
+    } else if (tipoProveedor === 'Suministros') {
+      listaEspecialidades = especialidadesSuministros;
+    }
+    
+    listaEspecialidades.forEach(especialidad => {
+      const option = document.createElement('option');
+      option.value = especialidad;
+      option.textContent = especialidad;
+      selectEspecialidad.appendChild(option);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar especialidades al cargar la página
+    actualizarEspecialidades();
+    
+    // Validar formulario antes de enviar
+    const form = document.querySelector('form');
+    
+    form.addEventListener('submit', function(e) {
+      // Validar nombre
+      const nombre = document.getElementById('nombre').value.trim();
+      if (!nombre) {
+        e.preventDefault();
+        alert('El nombre del proveedor es obligatorio');
+        return false;
+      }
+      
+      // Validar tipo
+      const tipo = document.getElementById('tipo').value;
+      if (!tipo) {
+        e.preventDefault();
+        alert('Debe seleccionar un tipo de proveedor');
+        return false;
+      }
+    });
+  });
+</script>
+{% endblock %}

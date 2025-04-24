@@ -1,0 +1,84 @@
+<!-- app/templates/clientes/nuevo.html -->
+{% extends 'layout/base.html' %}
+{% from 'layout/components.html' import form_group, direccion_form %}
+
+{% block title %}AM3.1 - Nuevo Cliente{% endblock %}
+
+{% block page_title %}Nuevo Cliente{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ url_for('clientes.nuevo_cliente') }}" id="cliente-form" onsubmit="return validateForm('cliente-form')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title mb-4">Datos del Cliente</h5>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    {{ form_group('nombre', 'Nombre', required=true) }}
+                </div>
+                <div class="col-md-4">
+                    {{ form_group('cif_nif', 'CIF/NIF') }}
+                </div>
+            </div>
+            
+            <h6 class="mt-4 mb-3">Dirección</h6>
+            {{ direccion_form() }}
+            
+            <h6 class="mt-4 mb-3">Contacto</h6>
+            <div class="row">
+                <div class="col-md-3">
+                    {{ form_group('telefono1', 'Teléfono Principal') }}
+                </div>
+                <div class="col-md-3">
+                    {{ form_group('telefono2', 'Teléfono Secundario') }}
+                </div>
+                <div class="col-md-3">
+                    {{ form_group('telefono3', 'Teléfono Adicional') }}
+                </div>
+                <div class="col-md-3">
+                    {{ form_group('telefono4', 'Teléfono Adicional') }}
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    {{ form_group('mail1', 'Email Principal', type='email') }}
+                </div>
+                <div class="col-md-6">
+                    {{ form_group('mail2', 'Email Secundario', type='email') }}
+                </div>
+            </div>
+            
+            <h6 class="mt-4 mb-3">Clasificación</h6>
+            <div class="row">
+                <div class="col-md-6">
+                    {{ form_group('tipo_cliente', 'Tipo de Cliente', type='select', options=[
+                        {'value': 'Particular', 'label': 'Particular'},
+                        {'value': 'Empresa', 'label': 'Empresa'},
+                        {'value': 'Administración', 'label': 'Administración Pública'},
+                        {'value': 'Asociación', 'label': 'Asociación/ONG'},
+                        {'value': 'Otro', 'label': 'Otro'}
+                    ]) }}
+                </div>
+                <div class="col-md-6">
+                    {{ form_group('categoria_cliente', 'Categoría', type='select', options=[
+                        {'value': 'A', 'label': 'A - Cliente Premium'},
+                        {'value': 'B', 'label': 'B - Cliente Regular'},
+                        {'value': 'C', 'label': 'C - Cliente Ocasional'},
+                        {'value': 'D', 'label': 'D - Cliente Potencial'}
+                    ]) }}
+                </div>
+            </div>
+            
+            <h6 class="mt-4 mb-3">Notas</h6>
+            {{ form_group('notas', 'Notas', type='textarea', placeholder='Información adicional sobre el cliente...') }}
+        </div>
+        
+        <div class="card-footer text-end">
+            <a href="{{ url_for('clientes.listar_clientes') }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar Cliente</button>
+        </div>
+    </div>
+</form>
+{% endblock %}

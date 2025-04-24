@@ -1,0 +1,52 @@
+{% extends "layout/base.html" %}
+{% block content %}
+<div class="container-fluid mt-4">
+  <h2>Facturas</h2>
+  <!-- No se puede crear una factura sin elegir proyecto -->
+  <a href="{{ url_for('proyectos.listar_proyectos') }}" class="btn btn-primary mb-3">
+    Nueva Factura
+  </a>
+  <table class="table table-striped w-100">
+    <thead class="table-light">
+      <tr>
+        <th>Número</th>
+        <th>Fecha Emisión</th>
+        <th>Cliente</th>
+        <th>Proyecto</th>
+        <th>Concepto</th>
+        <th>Total</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for factura, proyecto, cliente in facturas %}
+      <tr>
+        <td>{{ factura.numero }}</td>
+        <td>{{ factura.fecha_emision.strftime('%d/%m/%Y') if factura.fecha_emision else "-" }}</td>
+        <td>{{ cliente.nombre }} {{ cliente.apellidos }}</td>
+        <td>{{ proyecto.nombre_proyecto or proyecto.referencia }}</td>
+        <td>{{ factura.concepto }}</td>
+        <td>{{ "%.2f"|format(factura.total) }} €</td>
+        <td>
+          <span class="badge {% if factura.estado == 'Pendiente' %}bg-warning{% elif factura.estado == 'Pagada' %}bg-success{% elif factura.estado == 'Cancelada' %}bg-danger{% elif factura.estado == 'Vencida' %}bg-danger{% else %}bg-info{% endif %}">
+            {{ factura.estado }}
+          </span>
+        </td>
+        <td>
+          <a href="{{ url_for('facturas.editar_factura', id=factura.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+          <form action="{{ url_for('facturas.eliminar_factura', id=factura.id) }}" method="post" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Está seguro de borrar esta factura?');">Borrar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" class="text-center">No se encontraron facturas.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

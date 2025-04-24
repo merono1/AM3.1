@@ -1,0 +1,202 @@
+<!-- app/templates/proyectos/nuevo_simple.html -->
+{% extends 'layout/base.html' %}
+{% from 'layout/components.html' import form_group %}
+
+{% block title %}AM3.1 - Nuevo Proyecto{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2>Nuevo Proyecto</h2>
+    </div>
+    <div class="col text-end">
+        <a href="{{ url_for('proyectos.listar_proyectos') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a Proyectos
+        </a>
+    </div>
+</div>
+
+<form method="post" action="{{ url_for('proyectos.nuevo_proyecto') }}" id="proyecto-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div class="card">
+        <div class="card-body">
+            <div class="alert alert-info mb-3">
+                <h6 class="mb-1"><i class="fas fa-info-circle"></i> Información sobre la referencia del proyecto</h6>
+                <p class="mb-0 small">La referencia se generará automáticamente con el formato: <strong>PRXXXTT-DDMMAA</strong> donde:
+                    <ul class="mb-0 small">
+                        <li><strong>PR</strong>: Prefijo fijo</li>
+                        <li><strong>XXX</strong>: Número de cliente (ej: 001)</li>
+                        <li><strong>TT</strong>: Abreviatura del tipo de proyecto (ej: RF para Reforma)</li>
+                        <li><strong>DDMMAA</strong>: Fecha de creación (día/mes/año)</li>
+                    </ul>
+                </p>
+            </div>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label for="id_cliente" class="form-label">Cliente</label>
+                        <select class="form-select" id="id_cliente" name="id_cliente" required>
+                            <option value="">Seleccione un cliente...</option>
+                            {% for cliente in clientes %}
+                                <option 
+                                    value="{{ cliente.id }}" 
+                                    data-tipo="{{ cliente.tipo_via }}"
+                                    data-via="{{ cliente.nombre_via }}"
+                                    data-numero="{{ cliente.numero_via }}"
+                                    data-puerta="{{ cliente.puerta }}"
+                                    data-cp="{{ cliente.codigo_postal }}"
+                                    data-poblacion="{{ cliente.poblacion }}"
+                                    {% if id_cliente_preseleccionado and cliente.id|string == id_cliente_preseleccionado|string %}selected{% endif %}
+                                >
+                                    {{ cliente.nombre }} {% if cliente.cif_nif %}({{ cliente.cif_nif }}){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="tipo_proyecto" class="form-label">Tipo de Proyecto</label>
+                        <select class="form-select" id="tipo_proyecto" name="tipo_proyecto" required>
+                            <option value="">Seleccione...</option>
+                            <option value="Reforma">Reforma</option>
+                            <option value="Obra Nueva">Obra Nueva</option>
+                            <option value="Rehabilitación">Rehabilitación</option>
+                            <option value="Diseño">Diseño</option>
+                            <option value="Instalación">Instalación</option>
+                            <option value="Fontanería">Fontanería</option>
+                            <option value="Consultoría">Consultoría</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                        <div class="form-text">Importante para la generación de la referencia del proyecto.</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="mb-3">
+                        <label for="nombre_proyecto" class="form-label">Nombre del Proyecto</label>
+                        <input type="text" class="form-control" id="nombre_proyecto" name="nombre_proyecto" required>
+                    </div>
+                </div>
+            </div>
+            
+            <h6 class="mt-4 mb-3">Dirección del Proyecto</h6>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label for="tipo_via" class="form-label">Tipo de Vía</label>
+                        <select class="form-select" id="tipo_via" name="tipo_via">
+                            <option value="">Seleccione...</option>
+                            <option value="Calle">Calle</option>
+                            <option value="Avenida">Avenida</option>
+                            <option value="Plaza">Plaza</option>
+                            <option value="Paseo">Paseo</option>
+                            <option value="Carretera">Carretera</option>
+                            <option value="Camino">Camino</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="mb-3">
+                        <label for="nombre_via" class="form-label">Nombre de la Vía</label>
+                        <input type="text" class="form-control" id="nombre_via" name="nombre_via">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="mb-3">
+                        <label for="numero" class="form-label">Número</label>
+                        <input type="text" class="form-control" id="numero" name="numero">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="mb-3">
+                        <label for="puerta" class="form-label">Puerta/Piso</label>
+                        <input type="text" class="form-control" id="puerta" name="puerta">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label for="codigo_postal" class="form-label">Código Postal</label>
+                        <input type="text" class="form-control" id="codigo_postal" name="codigo_postal">
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <div class="mb-3">
+                        <label for="poblacion" class="form-label">Población</label>
+                        <input type="text" class="form-control" id="poblacion" name="poblacion">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <button type="button" id="btnCopiarDireccion" class="btn btn-outline-secondary">
+                    <i class="fas fa-copy"></i> Usar dirección del cliente seleccionado
+                </button>
+            </div>
+        </div>
+        
+        <div class="card-footer text-end">
+            <a href="{{ url_for('proyectos.listar_proyectos') }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar Proyecto</button>
+        </div>
+    </div>
+</form>
+
+{% if cliente_preseleccionado %}
+<div class="mt-4 alert alert-info">
+    <h5>Cliente Seleccionado</h5>
+    <p><strong>Nombre:</strong> {{ cliente_preseleccionado.nombre }}</p>
+    {% if cliente_preseleccionado.cif_nif %}
+    <p><strong>CIF/NIF:</strong> {{ cliente_preseleccionado.cif_nif }}</p>
+    {% endif %}
+    <p><strong>Dirección:</strong> 
+        {% if cliente_preseleccionado.tipo_via and cliente_preseleccionado.nombre_via %}
+            {{ cliente_preseleccionado.tipo_via }} {{ cliente_preseleccionado.nombre_via }}
+            {% if cliente_preseleccionado.numero_via %} {{ cliente_preseleccionado.numero_via }}{% endif %}
+            {% if cliente_preseleccionado.puerta %} {{ cliente_preseleccionado.puerta }}{% endif %}
+            {% if cliente_preseleccionado.codigo_postal or cliente_preseleccionado.poblacion %},
+                {{ cliente_preseleccionado.codigo_postal }} {{ cliente_preseleccionado.poblacion }}
+            {% endif %}
+        {% else %}
+            <em>No disponible</em>
+        {% endif %}
+    </p>
+</div>
+{% endif %}
+
+<script>
+// Script inline para evitar problemas de carga
+document.addEventListener("DOMContentLoaded", function() {
+    // Botón para copiar dirección del cliente
+    var btnCopiar = document.getElementById("btnCopiarDireccion");
+    if (btnCopiar) {
+        btnCopiar.onclick = function() {
+            var select = document.getElementById("id_cliente");
+            if (!select || select.value === "") {
+                alert("Por favor, seleccione un cliente primero.");
+                return;
+            }
+            
+            var selectedOption = select.options[select.selectedIndex];
+            
+            // Cargar datos desde los atributos data-*
+            document.getElementById("tipo_via").value = selectedOption.getAttribute("data-tipo") || "";
+            document.getElementById("nombre_via").value = selectedOption.getAttribute("data-via") || "";
+            document.getElementById("numero").value = selectedOption.getAttribute("data-numero") || "";
+            document.getElementById("puerta").value = selectedOption.getAttribute("data-puerta") || "";
+            document.getElementById("codigo_postal").value = selectedOption.getAttribute("data-cp") || "";
+            document.getElementById("poblacion").value = selectedOption.getAttribute("data-poblacion") || "";
+            
+            alert("Dirección del cliente copiada correctamente.");
+        };
+    }
+    
+    // Eliminado el código del confirm automático para que solo funcione el botón
+});
+</script>
+{% endblock %}

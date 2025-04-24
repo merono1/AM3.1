@@ -1,0 +1,711 @@
+    <!-- Datos básicos de la hoja -->
+    <div class="row g-2 mb-3">
+      <div class="col-md-12">
+        <label for="titulo" class="form-label">Título de la Hoja de Trabajo</label>
+        <input type="text" class="form-control" id="titulo" name="titulo" value="{{ hoja.titulo }}" required>
+      </div>
+    </div>{% extends "layout/base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+
+  <!-- Cabecera: Título y botón para volver al listado -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Editar Hoja de Trabajo</h2>
+    <a href="{{ url_for('hojas_trabajo.listar_hojas_trabajo') }}" class="btn btn-info" title="Ver lista de hojas de trabajo">Ver Lista de Hojas de Trabajo</a>
+  </div>
+
+  <!-- Formulario principal -->
+  <form method="post" action="{{ url_for('hojas_trabajo.editar_hoja', id=hoja.id) }}">
+    <!-- Token CSRF -->
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Datos básicos de la hoja -->
+    <div class="row g-2 mb-3">
+      <div class="col-md-12">
+        <label for="titulo" class="form-label">Título de la Hoja de Trabajo</label>
+        <input type="text" class="form-control" id="titulo" name="titulo" value="{{ hoja.titulo }}" required>
+      </div>
+    </div>
+
+    <!-- Fila con datos básicos -->
+    <div class="row g-2 mb-3 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label" for="referencia">Referencia</label>
+        <input type="text" class="form-control" id="referencia" name="referencia" value="{{ hoja.referencia }}" readonly title="Referencia de la hoja de trabajo">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label" for="fecha">Fecha</label>
+        <input type="date" class="form-control" id="fecha" name="fecha" value="{{ hoja.fecha_str }}" readonly title="Fecha de creación de la hoja">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label" for="margenMedio">Margen (%)</label>
+        <input type="number" step="any" class="form-control" id="margenMedio" value="0" title="Margen promedio para ajustar a todas las partidas">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label" for="tecnico_encargado">Técnico Encargado</label>
+        <input type="text" class="form-control" id="tecnico_encargado" name="tecnico_encargado" value="{{ hoja.tecnico_encargado|default('Sin asignar') }}" title="Nombre del técnico encargado de la hoja">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label" for="cliente">Cliente</label>
+        <input type="text" class="form-control" id="cliente" value="{{ cliente.nombre }} {{ cliente.apellidos }}" readonly title="Cliente asociado">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label" for="nombre_proyecto">Proyecto</label>
+        <input type="text" class="form-control" id="nombre_proyecto" value="{{ proyecto.nombre_proyecto or proyecto.referencia }}" readonly title="Nombre del proyecto">
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- Contenedor de capítulos y partidas -->
+    <div id="capitulosContainer">
+      {% if capitulos %}
+        {% for cap in capitulos %}
+          {% set chap_idx = loop.index0 %}
+          <div class="capitulo card mb-3" data-capitulo-index="{{ chap_idx }}">
+            <div class="card-header d-flex align-items-center">
+              <h4 class="mb-0 me-2">Capítulo {{ loop.index }}</h4>
+              <!-- Select para descripción del capítulo -->
+              <select name="capitulos[{{ chap_idx }}][descripcion]"
+                      class="form-select capitulo-select"
+                      title="Seleccione el tipo de capítulo">
+                <option value="">Seleccione capítulo</option>
+                <option value="Trabajos preliminares"   {% if cap.descripcion == "Trabajos preliminares" %}selected{% endif %}>Trabajos preliminares</option>
+                <option value="Demoliciones"            {% if cap.descripcion == "Demoliciones" %}selected{% endif %}>Demoliciones</option>
+                <option value="Movimiento de tierras"   {% if cap.descripcion == "Movimiento de tierras" %}selected{% endif %}>Movimiento de tierras</option>
+                <option value="Cimentaciones"           {% if cap.descripcion == "Cimentaciones" %}selected{% endif %}>Cimentaciones</option>
+                <option value="Estructuras"             {% if cap.descripcion == "Estructuras" %}selected{% endif %}>Estructuras</option>
+                <option value="Albañilería"             {% if cap.descripcion == "Albañilería" %}selected{% endif %}>Albañilería</option>
+                <option value="Carpintería"             {% if cap.descripcion == "Carpintería" %}selected{% endif %}>Carpintería</option>
+                <option value="Instalaciones eléctricas" {% if cap.descripcion == "Instalaciones eléctricas" %}selected{% endif %}>Instalaciones eléctricas</option>
+                <option value="Instalaciones de fontanería" {% if cap.descripcion == "Instalaciones de fontanería" %}selected{% endif %}>Instalaciones de fontanería</option>
+                <option value="Instalaciones de climatización" {% if cap.descripcion == "Instalaciones de climatización" %}selected{% endif %}>Instalaciones de climatización</option>
+                <option value="Pinturas y acabados finales" {% if cap.descripcion == "Pinturas y acabados finales" %}selected{% endif %}>Pinturas y acabados finales</option>
+                <option value="Urbanización y exteriores" {% if cap.descripcion == "Urbanización y exteriores" %}selected{% endif %}>Urbanización y exteriores</option>
+                <option value="Servicios documentales"   {% if cap.descripcion == "Servicios documentales" %}selected{% endif %}>Servicios documentales</option>
+                <option value="Otros"                    {% if cap.descripcion == "Otros" %}selected{% endif %}>Otros</option>
+              </select>
+              <button type="button" class="btn btn-sm btn-danger ms-auto deleteCapituloBtn" title="Borrar este capítulo">
+                Borrar Capítulo
+              </button>
+            </div>
+            <div class="card-body">
+              <!-- Contenedor de partidas -->
+              <div class="partidasContainer"
+                   data-capitulo-index="{{ chap_idx }}"
+                   data-partida-index="{{ cap.partidas|length }}">
+                {% for part in partidas_por_capitulo[cap.numero] if cap.numero in partidas_por_capitulo %}
+                  {% set part_idx = loop.index0 %}
+                  <div class="partida border p-2 mb-2">
+                    <div class="row">
+                      <div class="col-12 mb-2">
+                        <label class="form-label small-label">Descripción de la partida</label>
+                        <!-- Div editable para preservar el formato HTML -->
+                        <div class="form-control html-editor" 
+                             id="editor_{{ chap_idx }}_{{ part_idx }}"
+                             contenteditable="true"
+                             data-placeholder="Descripción"
+                             style="min-height: 100px; overflow-y: auto;"
+                             title="Descripción de la partida (con formato HTML)">
+                          {{ part.descripcion|safe }}
+                        </div>
+                        <!-- Campo oculto para enviar el HTML -->
+                        <input type="hidden" 
+                               name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][descripcion]"
+                               id="hidden_descripcion_{{ chap_idx }}_{{ part_idx }}"
+                               value="{{ part.descripcion }}"
+                               required>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-2">
+                        <label class="form-label small-label">Unitario</label>
+                        <select class="form-select"
+                                name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][unitario]"
+                                title="Unidad de medida"
+                                required>
+                          <option value="">Seleccione</option>
+                          <option value="ML" {% if part.unitario == "ML" %}selected{% endif %}>ML</option>
+                          <option value="M2" {% if part.unitario == "M2" %}selected{% endif %}>M2</option>
+                          <option value="M3" {% if part.unitario == "M3" %}selected{% endif %}>M3</option>
+                          <option value="PA" {% if part.unitario == "PA" %}selected{% endif %}>PA</option>
+                          <option value="UD" {% if part.unitario == "UD" %}selected{% endif %}>UD</option>
+                        </select>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small-label" for="cantidad_{{ chap_idx }}_{{ part_idx }}">Cantidad</label>
+                        <input type="number" step="any" class="form-control"
+                               id="cantidad_{{ chap_idx }}_{{ part_idx }}"
+                               name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][cantidad]"
+                               value="{{ part.cantidad or 0 }}"
+                               title="Cantidad de esta partida"
+                               required>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small-label" for="precio_{{ chap_idx }}_{{ part_idx }}">Precio (€)</label>
+                        <input type="number" step="any" class="form-control"
+                               id="precio_{{ chap_idx }}_{{ part_idx }}"
+                               name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][precio]"
+                               value="{{ part.precio or 0 }}"
+                               title="Precio unitario en euros"
+                               required>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small-label" for="total_{{ chap_idx }}_{{ part_idx }}">Total</label>
+                        <input type="number" step="any" class="form-control"
+                               id="total_{{ chap_idx }}_{{ part_idx }}"
+                               name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][total]"
+                               value="{{ part.total or 0 }}"
+                               title="Total (cantidad * precio)"
+                               readonly>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small-label" for="margen_{{ chap_idx }}_{{ part_idx }}">Margen (%)</label>
+                        <input type="number" step="any" class="form-control"
+                               id="margen_{{ chap_idx }}_{{ part_idx }}"
+                               name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][margen]"
+                               value="{{ part.margen or 40 }}"
+                               title="Margen de beneficio (%)"
+                               required>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small-label" for="final_{{ chap_idx }}_{{ part_idx }}">Final</label>
+                        <input type="number" step="any" class="form-control"
+                               id="final_{{ chap_idx }}_{{ part_idx }}"
+                               name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][final]"
+                               value="{{ part.final or 0 }}"
+                               title="Precio final (total + margen)"
+                               readonly>
+                      </div>
+                    </div>
+                    <!-- Nuevos campos para asignar proveedor -->
+                    <div class="row mt-2">
+                      <div class="col-md-6">
+                        <label class="form-label small-label">Proveedor</label>
+                        <select class="form-select proveedor-select"
+                                name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][id_proveedor]"
+                                id="proveedor_{{ chap_idx }}_{{ part_idx }}"
+                                data-partida-id="{{ part.id }}">
+                          <option value="">Seleccione un proveedor</option>
+                          {% for prov in proveedores %}
+                            <option value="{{ prov.id }}" {% if part.id_proveedor_principal == prov.id %}selected{% endif %}>{{ prov.nombre }} ({{ prov.especialidad }})</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label small-label">Precio Proveedor (€)</label>
+                        <input type="number" step="any" class="form-control proveedor-precio"
+                               name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][precio_proveedor]"
+                               id="precio_proveedor_{{ chap_idx }}_{{ part_idx }}"
+                               value="{{ part.precio_proveedor or 0 }}"
+                               title="Precio ofrecido por el proveedor">
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small-label">Margen Real (%)</label>
+                        <input type="number" class="form-control margen-real-display" 
+                               id="margen_real_{{ chap_idx }}_{{ part_idx }}" 
+                               value="{{ ((part.final or 0) / (part.precio_proveedor or 1) - 1) * 100 if part.precio_proveedor else 0 | round(2) }}"
+                               readonly>
+                      </div>
+                      <div class="col-12 mt-2 text-end">
+                        <button type="button" class="btn btn-sm btn-danger deletePartidaBtn" title="Borrar esta partida">
+                          Borrar Partida
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+              <button type="button" class="btn btn-sm btn-secondary addPartidaBtn mt-2" data-capitulo-index="{{ chap_idx }}" title="Agregar una nueva partida a este capítulo">
+                Nueva Partida
+              </button>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p>No hay capítulos asignados todavía en esta hoja de trabajo.</p>
+      {% endif %}
+    </div>
+
+    <!-- BOTÓN PARA AÑADIR UN NUEVO CAPÍTULO -->
+    <button type="button" class="btn btn-outline-secondary mb-3" id="addCapituloBtn" title="Agregar un nuevo capítulo a la hoja">
+      Agregar Capítulo
+    </button>
+
+    <!-- BOTONES FINALES: Guardar, Cancelar y los nuevos botones de Exportación -->
+    <div class="d-flex justify-content-end align-items-center">
+      <button type="submit" class="btn btn-success" title="Guardar Cambios">Guardar Cambios</button>
+      <a href="{{ url_for('hojas_trabajo.listar_hojas_trabajo') }}" class="btn btn-secondary ms-2" title="Cancelar la edición">Cancelar</a>
+      <!-- NUEVOS BOTONES DE EXPORTACIÓN -->
+      <button type="button" class="btn btn-outline-info ms-2" title="Generar Excel" onclick="window.location.href='{{ url_for('hojas_trabajo.exportar_excel', id=hoja.id) }}';" >
+        Generar Excel
+      </button>
+      <button type="button" class="btn btn-outline-warning ms-2" title="Generar PDF" onclick="window.location.href='{{ url_for('hojas_trabajo.ver_pdf', id=hoja.id) }}'">
+        Generar PDF
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- SCRIPT PARA MANEJO DINÁMICO DE CAPÍTULOS Y PARTIDAS -->
+{% raw %}
+<script>
+  let headerOldAvg = 0;
+
+  function recalcAverageMargin() {
+    const marginInputs = document.querySelectorAll('input[name*="[margen]"]');
+    let sum = 0, count = 0;
+    marginInputs.forEach(function(input) {
+      const val = parseFloat(input.value) || 0;
+      sum += val;
+      count++;
+    });
+    const avg = (count > 0) ? sum / count : 0;
+    document.getElementById('margenMedio').value = avg.toFixed(2);
+    return avg;
+  }
+
+  function updateFinalForMargin(margenInput) {
+  const row = margenInput.closest('.row');
+  if (row) {
+  const partida = row.closest('.partida');
+  const totalInput = row.querySelector('input[name*="[total]"]');
+  const finalInput = row.querySelector('input[name*="[final]"]');
+  const total = parseFloat(totalInput.value) || 0;
+  const margen = parseFloat(margenInput.value) || 0;
+    finalInput.value = (total * (1 + margen / 100)).toFixed(2);
+      
+        // Actualizar margen real cuando cambia el margen
+        if (partida) {
+          const precioProveedorInput = partida.querySelector('.proveedor-precio');
+          if (precioProveedorInput) {
+            actualizarMargenReal(precioProveedorInput);
+          }
+        }
+      }
+    }
+
+  function distributeNewAverage(newAvg) {
+    const marginInputs = document.querySelectorAll('input[name*="[margen]"]');
+    marginInputs.forEach(function(input) {
+      const currentVal = parseFloat(input.value) || 0;
+      const newVal = (headerOldAvg === 0) ? newAvg : (currentVal * (newAvg / headerOldAvg));
+      input.value = newVal.toFixed(2);
+      updateFinalForMargin(input);
+    });
+    recalcAverageMargin();
+  }
+
+  function addPartida(capIndex) {
+    const capDiv = document.querySelector(`.capitulo[data-capitulo-index="${capIndex}"]`);
+    const partidasContainer = capDiv.querySelector('.partidasContainer');
+    let partIndex = parseInt(partidasContainer.getAttribute('data-partida-index')) || 0;
+
+    const partDiv = document.createElement('div');
+    partDiv.className = 'partida border p-2 mb-2';
+    partDiv.innerHTML = `
+      <div class="row">
+        <div class="col-12 mb-2">
+          <label class="form-label small-label">Descripción de la partida</label>
+          <!-- Div editable para preservar el formato HTML -->
+          <div class="form-control html-editor" 
+               id="editor_${capIndex}_${partIndex}"
+               contenteditable="true"
+               data-placeholder="Descripción"
+               style="min-height: 100px; overflow-y: auto;"
+               title="Descripción de la partida (con formato HTML)">
+          </div>
+          <!-- Campo oculto para enviar el HTML -->
+          <input type="hidden" 
+                 name="capitulos[${capIndex}][partidas][${partIndex}][descripcion]"
+                 id="hidden_descripcion_${capIndex}_${partIndex}"
+                 required>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-2">
+          <label class="form-label small-label">Unitario</label>
+          <select class="form-select" name="capitulos[${capIndex}][partidas][${partIndex}][unitario]" title="Unidad de medida" required>
+            <option value="">Seleccione</option>
+            <option value="ML">ML</option>
+            <option value="M2">M2</option>
+            <option value="M3">M3</option>
+            <option value="PA">PA</option>
+            <option value="UD">UD</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small-label">Cantidad</label>
+          <input type="number" step="any" class="form-control"
+                 name="capitulos[${capIndex}][partidas][${partIndex}][cantidad]"
+                 value="0"
+                 title="Cantidad de esta partida"
+                 required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small-label">Precio (€)</label>
+          <input type="number" step="any" class="form-control"
+                 name="capitulos[${capIndex}][partidas][${partIndex}][precio]"
+                 value="0"
+                 title="Precio unitario en euros"
+                 required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small-label">Total</label>
+          <input type="number" step="any" class="form-control"
+                 name="capitulos[${capIndex}][partidas][${partIndex}][total]"
+                 value="0"
+                 title="Total (cantidad * precio)"
+                 readonly>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small-label">Margen (%)</label>
+          <input type="number" step="any" class="form-control"
+                 name="capitulos[${capIndex}][partidas][${partIndex}][margen]"
+                 value="40"
+                 title="Margen de beneficio (%)"
+                 required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small-label">Final</label>
+          <input type="number" step="any" class="form-control"
+                 name="capitulos[${capIndex}][partidas][${partIndex}][final]"
+                 value="0"
+                 title="Precio final (total + margen)"
+                 readonly>
+        </div>
+      </div>
+      <!-- Nuevos campos para asignar proveedor -->
+      <div class="row mt-2">
+        <div class="col-md-6">
+          <label class="form-label small-label">Proveedor</label>
+          <select class="form-select proveedor-select"
+                  name="capitulos[${capIndex}][partidas][${partIndex}][id_proveedor]"
+                  id="proveedor_${capIndex}_${partIndex}"
+                  data-partida-id="0">
+            <option value="">Seleccione un proveedor</option>
+            ${proveedoresOptions}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small-label">Precio Proveedor (€)</label>
+          <input type="number" step="any" class="form-control proveedor-precio"
+                 name="capitulos[${capIndex}][partidas][${partIndex}][precio_proveedor]"
+                 id="precio_proveedor_${capIndex}_${partIndex}"
+                 value="0"
+                 title="Precio ofrecido por el proveedor">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small-label">Margen Real (%)</label>
+          <input type="number" class="form-control margen-real-display" 
+                 id="margen_real_${capIndex}_${partIndex}" 
+                 value="0"
+                 readonly>
+        </div>
+        <div class="col-12 mt-2 text-end">
+          <button type="button" class="btn btn-sm btn-danger deletePartidaBtn" title="Borrar esta partida">
+            Borrar Partida
+          </button>
+        </div>
+      </div>
+    `;
+    partidasContainer.appendChild(partDiv);
+    partIndex++;
+    partidasContainer.setAttribute('data-partida-index', partIndex);
+
+    partDiv.querySelector('.deletePartidaBtn').addEventListener('click', function() {
+      partDiv.remove();
+    });
+
+    const cantidadInput = partDiv.querySelector(`input[name="capitulos[${capIndex}][partidas][${partIndex - 1}][cantidad]"]`);
+    const precioInput   = partDiv.querySelector(`input[name="capitulos[${capIndex}][partidas][${partIndex - 1}][precio]"]`);
+    const totalInput    = partDiv.querySelector(`input[name="capitulos[${capIndex}][partidas][${partIndex - 1}][total]"]`);
+    const margenInput   = partDiv.querySelector(`input[name="capitulos[${capIndex}][partidas][${partIndex - 1}][margen]"]`);
+    
+    // Configurar el nuevo editor HTML
+    const editor = partDiv.querySelector('.html-editor');
+    const hiddenInput = partDiv.querySelector(`input[id="hidden_descripcion_${capIndex}_${partIndex - 1}"]`);
+    
+    if (editor && hiddenInput) {
+      editor.addEventListener('input', function() {
+        hiddenInput.value = editor.innerHTML;
+      });
+    }
+    
+    // Agregar barra de herramientas para el nuevo editor
+    setupEditorToolbar();
+
+    // Configurar los listeners para actualizar el total y el precioProveedor
+    const precioProveedorInput = partDiv.querySelector(`input[id="precio_proveedor_${capIndex}_${partIndex - 1}"]`);
+    if (precioProveedorInput) {
+      precioProveedorInput.addEventListener('input', function() {
+        actualizarMargenReal(this);
+      });
+    }
+
+    function updateTotal() {
+      const cantidadVal = parseFloat(cantidadInput.value) || 0;
+      const precioVal   = parseFloat(precioInput.value)   || 0;
+      totalInput.value  = (cantidadVal * precioVal).toFixed(2);
+      updateFinalForMargin(margenInput);
+      
+      // Actualizar el margen real
+      if (precioProveedorInput) {
+        actualizarMargenReal(precioProveedorInput);
+      }
+    }
+    cantidadInput.addEventListener('input', updateTotal);
+    precioInput.addEventListener('input', updateTotal);
+    margenInput.addEventListener('input', function() {
+      updateFinalForMargin(margenInput);
+      recalcAverageMargin();
+    });
+  }
+
+  function addCapitulo() {
+    const capitulosContainer = document.getElementById('capitulosContainer');
+    let currentChaps = capitulosContainer.querySelectorAll('.capitulo').length;
+    const newChapIndex = currentChaps;
+    const chapNumber = currentChaps + 1;
+
+    const capDiv = document.createElement('div');
+    capDiv.className = 'capitulo card mb-3';
+    capDiv.setAttribute('data-capitulo-index', newChapIndex);
+
+    capDiv.innerHTML = `
+      <div class="card-header d-flex align-items-center">
+        <h4 class="mb-0 me-2">Capítulo ${chapNumber}</h4>
+        <select name="capitulos[${newChapIndex}][descripcion]"
+                class="form-select capitulo-select"
+                title="Seleccione el tipo de capítulo">
+          <option value="">Seleccione capítulo</option>
+          <option value="Trabajos preliminares">Trabajos preliminares</option>
+          <option value="Demoliciones">Demoliciones</option>
+          <option value="Movimiento de tierras">Movimiento de tierras</option>
+          <option value="Cimentaciones">Cimentaciones</option>
+          <option value="Estructuras">Estructuras</option>
+          <option value="Albañilería">Albañilería</option>
+          <option value="Carpintería">Carpintería</option>
+          <option value="Instalaciones eléctricas">Instalaciones eléctricas</option>
+          <option value="Instalaciones de fontanería">Instalaciones de fontanería</option>
+          <option value="Instalaciones de climatización">Instalaciones de climatización</option>
+          <option value="Pinturas y acabados finales">Pinturas y acabados finales</option>
+          <option value="Urbanización y exteriores">Urbanización y exteriores</option>
+          <option value="Servicios documentales">Servicios documentales</option>
+          <option value="Otros">Otros</option>
+        </select>
+        <button type="button" class="btn btn-sm btn-danger ms-auto deleteCapituloBtn" title="Borrar este capítulo">
+          Borrar Capítulo
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="partidasContainer" data-capitulo-index="${newChapIndex}" data-partida-index="0">
+        </div>
+        <button type="button" class="btn btn-sm btn-secondary addPartidaBtn mt-2" data-capitulo-index="${newChapIndex}" title="Agregar una nueva partida al capítulo">
+          Nueva Partida
+        </button>
+      </div>
+    `;
+    capitulosContainer.appendChild(capDiv);
+
+    capDiv.querySelector('.deleteCapituloBtn').addEventListener('click', function() {
+      capDiv.remove();
+    });
+    capDiv.querySelector('.addPartidaBtn').addEventListener('click', function() {
+      addPartida(newChapIndex);
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function(){
+    // Variable global para almacenar las opciones de proveedores
+    let proveedoresOptions = '';
+    
+    // Cargar los proveedores desde la API
+    fetch('/proveedores/api/proveedores')
+        .then(response => response.json())
+        .then(data => {
+            // Crear las opciones de proveedores
+            proveedoresOptions = data.map(prov => 
+                `<option value="${prov.id}">${prov.nombre} (${prov.especialidad || 'Sin especialidad'})</option>`
+            ).join('');
+        })
+        .catch(error => console.error('Error al cargar proveedores:', error));
+        
+    // Función para actualizar el cálculo de margen real
+    function actualizarMargenReal(partida) {
+        const row = partida.closest('.partida');
+        if (!row) return;
+        
+        const finalInput = row.querySelector('input[name*="[final]"]');
+        const precioProveedorInput = row.querySelector('input[name*="[precio_proveedor]"]');
+        const margenRealInput = row.querySelector('.margen-real-display');
+        
+        if (!finalInput || !precioProveedorInput || !margenRealInput) return;
+        
+        const final = parseFloat(finalInput.value) || 0;
+        const precioProveedor = parseFloat(precioProveedorInput.value) || 0;
+        
+        if (precioProveedor > 0) {
+            const margenReal = ((final / precioProveedor) - 1) * 100;
+            margenRealInput.value = margenReal.toFixed(2);
+        } else {
+            margenRealInput.value = "0";
+        }
+    }
+    
+    // Añadir event listeners para el precio del proveedor
+    document.querySelectorAll('.proveedor-precio').forEach(input => {
+        input.addEventListener('input', function() {
+            actualizarMargenReal(this);
+        });
+    });
+    // Sincronizar todos los editores HTML con sus campos ocultos
+    function setupHtmlEditors() {
+      document.querySelectorAll('.html-editor').forEach(function(editor) {
+        const id = editor.id;
+        const hiddenInputId = id.replace('editor', 'hidden_descripcion');
+        const hiddenInput = document.getElementById(hiddenInputId);
+        
+        // Inicializar con contenido
+        if (hiddenInput && hiddenInput.value) {
+          editor.innerHTML = hiddenInput.value;
+        }
+        
+        // Sincronizar al escribir
+        editor.addEventListener('input', function() {
+          if (hiddenInput) {
+            hiddenInput.value = editor.innerHTML;
+          }
+        });
+        
+        // Aplicar placeholder si está vacío
+        if (!editor.innerHTML.trim()) {
+          editor.innerHTML = '';
+        }
+      });
+    }
+    
+    // Configurar la barra de herramientas básica para los editores
+    function setupEditorToolbar() {
+      // Agregar barra de herramientas simple para formato de texto
+      const toolbarHtml = `
+        <div class="editor-toolbar btn-group btn-group-sm mb-1">
+          <button type="button" class="btn btn-outline-secondary" data-command="bold" title="Negrita"><i class="fas fa-bold"></i></button>
+          <button type="button" class="btn btn-outline-secondary" data-command="italic" title="Cursiva"><i class="fas fa-italic"></i></button>
+          <button type="button" class="btn btn-outline-secondary" data-command="underline" title="Subrayado"><i class="fas fa-underline"></i></button>
+          <button type="button" class="btn btn-outline-secondary" data-command="insertOrderedList" title="Lista numerada"><i class="fas fa-list-ol"></i></button>
+          <button type="button" class="btn btn-outline-secondary" data-command="insertUnorderedList" title="Lista con viñetas"><i class="fas fa-list-ul"></i></button>
+        </div>
+      `;
+      
+      // Agregar antes de cada editor
+      document.querySelectorAll('.html-editor').forEach(function(editor) {
+        if (!editor.previousElementSibling || !editor.previousElementSibling.classList.contains('editor-toolbar')) {
+          editor.insertAdjacentHTML('beforebegin', toolbarHtml);
+        }
+      });
+      
+      // Agregar listeners a los botones de la barra
+      document.querySelectorAll('.editor-toolbar button').forEach(function(button) {
+        button.addEventListener('click', function() {
+          const command = this.getAttribute('data-command');
+          document.execCommand(command, false, null);
+          
+          // Encontrar el editor asociado y actualizar el campo oculto
+          const toolbar = this.closest('.editor-toolbar');
+          const editor = toolbar.nextElementSibling;
+          if (editor && editor.classList.contains('html-editor')) {
+            const hiddenInputId = editor.id.replace('editor', 'hidden_descripcion');
+            const hiddenInput = document.getElementById(hiddenInputId);
+            if (hiddenInput) {
+              hiddenInput.value = editor.innerHTML;
+            }
+          }
+        });
+      });
+    }
+    
+    // Inicializar editores existentes
+    setupHtmlEditors();
+    setupEditorToolbar();
+    document.querySelectorAll('.capitulo').forEach(function(chDiv) {
+      chDiv.querySelectorAll('.deleteCapituloBtn').forEach(function(btn) {
+        btn.addEventListener('click', function(){
+          chDiv.remove();
+        });
+      });
+      chDiv.querySelectorAll('.deletePartidaBtn').forEach(function(btn) {
+        btn.addEventListener('click', function(){
+          btn.closest('.partida').remove();
+        });
+      });
+      const addPartBtn = chDiv.querySelector('.addPartidaBtn');
+      if (addPartBtn) {
+        addPartBtn.addEventListener('click', function(){
+          const capIndex = chDiv.getAttribute('data-capitulo-index');
+          addPartida(capIndex);
+        });
+      }
+    });
+    document.getElementById('addCapituloBtn').addEventListener('click', addCapitulo);
+
+    const marginMedioInput = document.getElementById('margenMedio');
+    marginMedioInput.addEventListener('focus', function() {
+      headerOldAvg = recalcAverageMargin();
+    });
+    marginMedioInput.addEventListener('change', function() {
+      const newAvg = parseFloat(this.value) || 0;
+      distributeNewAverage(newAvg);
+    });
+
+    recalcAverageMargin();
+    
+    // Asegurarse de que todos los formularios sincronicen los editores antes de enviar
+    document.querySelectorAll('form').forEach(form => {
+      form.addEventListener('submit', function() {
+        document.querySelectorAll('.html-editor').forEach(function(editor) {
+          const id = editor.id;
+          const hiddenInputId = id.replace('editor', 'hidden_descripcion');
+          const hiddenInput = document.getElementById(hiddenInputId);
+          if (hiddenInput) {
+            hiddenInput.value = editor.innerHTML;
+          }
+        });
+      });
+    });
+  });
+</script>
+{% endraw %}
+
+<!-- Agregar FontAwesome para los iconos de la barra de herramientas -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<style>
+  /* Estilos para el editor HTML */
+  .html-editor {
+    min-height: 100px;
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    line-height: 1.5;
+  }
+  .html-editor:focus {
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  }
+  .html-editor ul, .html-editor ol {
+    padding-left: 2em;
+    margin-bottom: 1em;
+  }
+  .html-editor p {
+    margin-bottom: 0.5em;
+  }
+  /* Estilos para la barra de herramientas */
+  .editor-toolbar {
+    margin-bottom: 5px;
+  }
+</style>
+
+{% endblock %}

@@ -1,0 +1,159 @@
+/* app/static/css/styles.css */
+/* Estilos generales */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+main {
+    flex: 1;
+}
+
+/* Tablas */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+/* Tarjetas */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: box-shadow 0.3s ease-in-out;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Botones */
+.btn-group {
+    display: flex;
+}
+
+.btn-group > .btn {
+    margin-right: 0;
+}
+
+/* Flash messages */
+.flash-messages {
+    display: none;
+}
+
+/* Formularios */
+label.required::after {
+    content: " *";
+    color: red;
+}
+
+/* Secciones */
+.section-heading {
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Estilos para pestañas */
+.nav-tabs {
+    margin-bottom: 1rem;
+}
+
+/* Tooltips personalizados */
+.custom-tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.custom-tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #000;
+    color: #fff;
+    padding: 0.5rem;
+    border-radius: 3px;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+/* Alineación y espaciado */
+.mb-lg {
+    margin-bottom: 2rem;
+}
+
+.mt-lg {
+    margin-top: 2rem;
+}
+
+/* Estilos para partidas con texto enriquecido */
+.descripcion-celda ul, .descripcion-celda ol {
+    margin-left: 20px;
+    padding-left: 10px;
+}
+
+.descripcion-celda p {
+    margin-bottom: 8px;
+}
+
+.descripcion-celda blockquote {
+    border-left: 3px solid #ccc;
+    margin-left: 10px;
+    padding-left: 10px;
+    font-style: italic;
+    color: #555;
+}
+
+.descripcion-celda strong, .descripcion-celda b {
+    font-weight: bold;
+}
+
+.descripcion-celda em, .descripcion-celda i {
+    font-style: italic;
+}
+
+.descripcion-celda u, .descripcion-celda s {
+    text-decoration: underline;
+}
+
+/* Estilos para niveles de encabezado en descripciones */
+.descripcion-celda h1 {
+    font-size: 1.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.descripcion-celda h2 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.descripcion-celda h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.descripcion-celda h4 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Estilos para listas */
+.descripcion-celda ul li, .descripcion-celda ol li {
+    margin-bottom: 4px;
+}
+
+/* Media queries para responsividad */
+@media (max-width: 768px) {
+    .table-responsive .btn {
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .hide-on-mobile {
+        display: none;
+    }
+}

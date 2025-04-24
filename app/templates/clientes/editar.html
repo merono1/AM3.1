@@ -1,0 +1,118 @@
+<!-- app/templates/clientes/editar.html -->
+{% extends 'layout/base.html' %}
+{% from 'layout/components.html' import form_group, direccion_form, csrf_input %}
+
+{% block title %}AM3.1 - Editar Cliente{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2>Editar Cliente</h2>
+    </div>
+    <div class="col text-end">
+        <a href="{{ url_for('clientes.listar_clientes') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a Clientes
+        </a>
+    </div>
+</div>
+
+<form method="post" action="{{ url_for('clientes.editar_cliente', id=cliente.id) }}" id="cliente-form" onsubmit="return validateForm('cliente-form')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title mb-4">Datos del Cliente</h5>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    {{ form_group('nombre', 'Nombre', required=true, value=cliente.nombre) }}
+                </div>
+                <div class="col-md-4">
+                    {{ form_group('cif_nif', 'CIF/NIF', value=cliente.cif_nif) }}
+                </div>
+            </div>
+            
+            <h6 class="mt-4 mb-3">Dirección</h6>
+            {{ direccion_form(data={
+                'tipo_via': cliente.tipo_via,
+                'nombre_via': cliente.nombre_via,
+                'numero_via': cliente.numero_via,
+                'puerta': cliente.puerta,
+                'codigo_postal': cliente.codigo_postal,
+                'poblacion': cliente.poblacion
+            }) }}
+            
+            <h6 class="mt-4 mb-3">Contacto</h6>
+            <div class="row">
+                <div class="col-md-3">
+                    {{ form_group('telefono1', 'Teléfono Principal', value=cliente.telefono1) }}
+                </div>
+                <div class="col-md-3">
+                    {{ form_group('telefono2', 'Teléfono Secundario', value=cliente.telefono2) }}
+                </div>
+                <div class="col-md-3">
+                    {{ form_group('telefono3', 'Teléfono Adicional', value=cliente.telefono3) }}
+                </div>
+                <div class="col-md-3">
+                    {{ form_group('telefono4', 'Teléfono Adicional', value=cliente.telefono4) }}
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    {{ form_group('mail1', 'Email Principal', type='email', value=cliente.mail1) }}
+                </div>
+                <div class="col-md-6">
+                    {{ form_group('mail2', 'Email Secundario', type='email', value=cliente.mail2) }}
+                </div>
+            </div>
+            
+            <h6 class="mt-4 mb-3">Clasificación</h6>
+            <div class="row">
+                <div class="col-md-6">
+                    {{ form_group('tipo_cliente', 'Tipo de Cliente', type='select', options=[
+                        {'value': 'Particular', 'label': 'Particular'},
+                        {'value': 'Empresa', 'label': 'Empresa'},
+                        {'value': 'Administración', 'label': 'Administración Pública'},
+                        {'value': 'Asociación', 'label': 'Asociación/ONG'},
+                        {'value': 'Otro', 'label': 'Otro'}
+                    ], selected_value=cliente.tipo_cliente) }}
+                </div>
+                <div class="col-md-6">
+                    {{ form_group('categoria_cliente', 'Categoría', type='select', options=[
+                        {'value': 'A', 'label': 'A - Cliente Premium'},
+                        {'value': 'B', 'label': 'B - Cliente Regular'},
+                        {'value': 'C', 'label': 'C - Cliente Ocasional'},
+                        {'value': 'D', 'label': 'D - Cliente Potencial'}
+                    ], selected_value=cliente.categoria_cliente) }}
+                </div>
+            </div>
+            
+            <h6 class="mt-4 mb-3">Notas</h6>
+            {{ form_group('notas', 'Notas', type='textarea', placeholder='Información adicional sobre el cliente...', value=cliente.notas) }}
+        </div>
+        
+        <div class="card-footer text-end">
+            <a href="{{ url_for('clientes.listar_clientes') }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function validateForm(formId) {
+    const form = document.getElementById(formId);
+    
+    // Validar nombre
+    const nombreInput = form.elements['nombre'];
+    if (!nombreInput.value.trim()) {
+        alert('El nombre del cliente es obligatorio.');
+        nombreInput.focus();
+        return false;
+    }
+    
+    return true;
+}
+</script>
+{% endblock %}

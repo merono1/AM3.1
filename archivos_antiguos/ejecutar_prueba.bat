@@ -1,0 +1,6 @@
+@echo off
+echo Ejecutando prueba de generacion de PDF...
+python test_pdf_minimo.py
+echo.
+echo Presiona cualquier tecla para salir...
+pause > nul

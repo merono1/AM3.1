@@ -1,0 +1,80 @@
+{% extends "layout/base.html" %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center mb-5">
+    <div class="col-md-8 text-center">
+      <h1 class="display-4">Sistema de Gestión AM3.1</h1>
+      <p class="lead">Bienvenido a la nueva versión de la aplicación de gestión empresarial.</p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Tarjeta para Clientes -->
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Clientes</h5>
+          <p class="card-text">Gestione la información de sus clientes: datos de contacto, historial y más.</p>
+          <a href="{{ url_for('clientes.listar_clientes') }}" class="btn btn-primary">Gestionar Clientes</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta para Proyectos -->
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Proyectos</h5>
+          <p class="card-text">Administre sus proyectos, desde la planificación hasta la ejecución final.</p>
+          <a href="{{ url_for('proyectos.listar_proyectos') }}" class="btn btn-primary">Gestionar Proyectos</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta para Presupuestos -->
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Presupuestos</h5>
+          <p class="card-text">Cree y gestione presupuestos para sus clientes y proyectos.</p>
+          <a href="{{ url_for('presupuestos.listar_presupuestos') }}" class="btn btn-primary">Gestionar Presupuestos</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta para Facturas -->
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Facturas</h5>
+          <p class="card-text">Emita y gestione facturas para los trabajos realizados.</p>
+          <a href="{{ url_for('facturas.listar_facturas') }}" class="btn btn-primary">Gestionar Facturas</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta para Hojas de Trabajo -->
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Hojas de Trabajo</h5>
+          <p class="card-text">Controle las tareas, materiales y tiempos en sus proyectos.</p>
+          <a href="{{ url_for('hojas_trabajo.listar_hojas_trabajo') }}" class="btn btn-primary">Gestionar Hojas</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta para Proveedores -->
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Proveedores</h5>
+          <p class="card-text">Administre su red de proveedores y colaboradores.</p>
+          <a href="{{ url_for('proveedores.listar_proveedores') }}" class="btn btn-primary">Gestionar Proveedores</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

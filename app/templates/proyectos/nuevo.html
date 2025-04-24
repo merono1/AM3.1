@@ -1,0 +1,197 @@
+<!-- app/templates/proyectos/nuevo.html -->
+{% extends 'layout/base.html' %}
+{% from 'layout/components.html' import form_group, direccion_form, csrf_input %}
+
+{% block title %}AM3.1 - Nuevo Proyecto{% endblock %}
+
+{% block page_title %}Nuevo Proyecto{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ url_for('proyectos.nuevo_proyecto') }}" id="proyecto-form" onsubmit="return validateForm('proyecto-form')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title mb-4">Datos del Proyecto</h5>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label for="id_cliente" class="form-label">Cliente</label>
+                        <select class="form-select" id="id_cliente" name="id_cliente" required>
+                            <option value="">Seleccione un cliente...</option>
+                            {% for cliente in clientes %}
+                                <option value="{{ cliente.id }}" {% if id_cliente_preseleccionado and cliente.id|string == id_cliente_preseleccionado|string %}selected{% endif %}>{{ cliente.nombre }} {% if cliente.cif_nif %}({{ cliente.cif_nif }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    {{ form_group('tipo_proyecto', 'Tipo de Proyecto', type='select', options=[
+                        {'value': 'Reforma', 'label': 'Reforma'},
+                        {'value': 'Obra Nueva', 'label': 'Obra Nueva'},
+                        {'value': 'Rehabilitación', 'label': 'Rehabilitación'},
+                        {'value': 'Diseño', 'label': 'Diseño'},
+                        {'value': 'Instalación', 'label': 'Instalación'},
+                        {'value': 'Consultoría', 'label': 'Consultoría'},
+                        {'value': 'Otro', 'label': 'Otro'}
+                    ]) }}
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    {{ form_group('nombre_proyecto', 'Nombre del Proyecto', required=true) }}
+                </div>
+            </div>
+            
+            <h6 class="mt-4 mb-3">Dirección del Proyecto</h6>
+            
+            {{ direccion_form() }}
+
+            <div class="mt-3">
+                <button type="button" id="btn-usar-dir-cliente" class="btn btn-outline-secondary">
+                    <i class="fas fa-copy"></i> Usar dirección del cliente seleccionado
+                </button>
+            </div>
+        </div>
+        
+        <div class="card-footer text-end">
+            <a href="{{ url_for('proyectos.listar_proyectos') }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar Proyecto</button>
+        </div>
+    </div>
+</form>
+
+{% if cliente_preseleccionado %}
+<div class="mt-4 alert alert-info">
+    <h5>Cliente Seleccionado</h5>
+    <p><strong>Nombre:</strong> {{ cliente_preseleccionado.nombre }}</p>
+    {% if cliente_preseleccionado.cif_nif %}
+    <p><strong>CIF/NIF:</strong> {{ cliente_preseleccionado.cif_nif }}</p>
+    {% endif %}
+    <p><strong>Dirección:</strong> 
+        {% if cliente_preseleccionado.tipo_via and cliente_preseleccionado.nombre_via %}
+            {{ cliente_preseleccionado.tipo_via }} {{ cliente_preseleccionado.nombre_via }}
+            {% if cliente_preseleccionado.numero_via %} {{ cliente_preseleccionado.numero_via }}{% endif %}
+            {% if cliente_preseleccionado.puerta %} {{ cliente_preseleccionado.puerta }}{% endif %}
+            {% if cliente_preseleccionado.codigo_postal or cliente_preseleccionado.poblacion %},
+                {{ cliente_preseleccionado.codigo_postal }} {{ cliente_preseleccionado.poblacion }}
+            {% endif %}
+        {% else %}
+            <em>No disponible</em>
+        {% endif %}
+    </p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Documento cargado. Inicializando...');
+
+        // Imprimir información sobre los campos de dirección
+        console.log('Campos de dirección:');
+        console.log('tipo_via:', document.getElementById('tipo_via'));
+        console.log('nombre_via:', document.getElementById('nombre_via'));
+        console.log('numero:', document.getElementById('numero'));
+        console.log('puerta:', document.getElementById('puerta'));
+        console.log('codigo_postal:', document.getElementById('codigo_postal'));
+        console.log('poblacion:', document.getElementById('poblacion'));
+        
+        // Botón para usar dirección del cliente
+        const btnUsarDirCliente = document.getElementById('btn-usar-dir-cliente');
+        if (btnUsarDirCliente) {
+            console.log('Botón de copiar dirección encontrado, añadiendo event listener');
+            
+            btnUsarDirCliente.addEventListener('click', function() {
+                const clienteSelect = document.getElementById('id_cliente');
+                if (!clienteSelect || !clienteSelect.value) {
+                    alert('Debe seleccionar un cliente primero.');
+                    return;
+                }
+                
+                // Obtener la opción seleccionada
+                const selectedIndex = clienteSelect.selectedIndex;
+                const clienteId = clienteSelect.value;
+                const clienteNombre = clienteSelect.options[selectedIndex].text;
+                
+                console.log('Cliente seleccionado:', clienteId, clienteNombre);
+                
+                // Datos de todos los clientes disponibles
+                const clientesData = {
+                    {% for cliente in clientes %}
+                    "{{ cliente.id }}": {
+                        "tipo_via": "{{ cliente.tipo_via }}",
+                        "nombre_via": "{{ cliente.nombre_via }}",
+                        "numero_via": "{{ cliente.numero_via }}",
+                        "puerta": "{{ cliente.puerta }}",
+                        "codigo_postal": "{{ cliente.codigo_postal }}",
+                        "poblacion": "{{ cliente.poblacion }}"
+                    }{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                };
+                
+                const clienteData = clientesData[clienteId];
+                console.log('Datos del cliente:', clienteData);
+                
+                if (clienteData) {
+                    // Rellenar campos directamente desde los datos almacenados
+                    document.getElementById('tipo_via').value = clienteData.tipo_via || '';
+                    document.getElementById('nombre_via').value = clienteData.nombre_via || '';
+                    document.getElementById('numero_via').value = clienteData.numero_via || '';
+                    document.getElementById('puerta').value = clienteData.puerta || '';
+                    document.getElementById('codigo_postal').value = clienteData.codigo_postal || '';
+                    document.getElementById('poblacion').value = clienteData.poblacion || '';
+                    
+                    alert('Dirección del cliente copiada con éxito.');
+                } else {
+                    alert('No se pudo obtener la información de dirección del cliente seleccionado.');
+                }
+            });
+        } else {
+            console.error('No se encontró el botón de copiar dirección');
+        }
+
+        // Si hay un cliente preseleccionado, preguntamos si desea usar su dirección
+        {% if cliente_preseleccionado %}
+        console.log('Cliente preseleccionado detectado:', {{ cliente_preseleccionado.id }});
+        const usarDireccionCliente = confirm('¿Desea usar la misma dirección del cliente para el proyecto?');
+        if (usarDireccionCliente) {
+            console.log('Usuario eligió usar la dirección del cliente preseleccionado');
+            
+            document.getElementById('tipo_via').value = '{{ cliente_preseleccionado.tipo_via }}';
+            document.getElementById('nombre_via').value = '{{ cliente_preseleccionado.nombre_via }}';
+            document.getElementById('numero_via').value = '{{ cliente_preseleccionado.numero_via }}';
+            document.getElementById('puerta').value = '{{ cliente_preseleccionado.puerta }}';
+            document.getElementById('codigo_postal').value = '{{ cliente_preseleccionado.codigo_postal }}';
+            document.getElementById('poblacion').value = '{{ cliente_preseleccionado.poblacion }}';
+            
+            console.log('Dirección del cliente preseleccionado aplicada');
+        }
+        {% endif %}
+    });
+    
+    function validateForm(formId) {
+        const form = document.getElementById(formId);
+        
+        // Validar que se haya seleccionado un cliente
+        const clienteSelect = form.elements['id_cliente'];
+        if (!clienteSelect.value) {
+            alert('Debe seleccionar un cliente.');
+            clienteSelect.focus();
+            return false;
+        }
+        
+        // Validar nombre del proyecto
+        const nombreProyectoInput = form.elements['nombre_proyecto'];
+        if (!nombreProyectoInput.value.trim()) {
+            alert('El nombre del proyecto es obligatorio.');
+            nombreProyectoInput.focus();
+            return false;
+        }
+        
+        return true;
+    }
+</script>
+{% endblock %}

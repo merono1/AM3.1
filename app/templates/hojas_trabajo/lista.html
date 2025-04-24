@@ -1,0 +1,119 @@
+{% extends "layout/base.html" %}
+{% block content %}
+
+<div class="container-fluid mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Hojas de Trabajo</h2>
+    <a href="{{ url_for('presupuestos.listar_presupuestos') }}" class="btn btn-info">
+      <i class="fas fa-list-ul me-1"></i> Ir a Presupuestos para Crear Hoja
+    </a>
+  </div>
+
+  {% if hojas %}
+    <div class="card">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Hojas de Trabajo Disponibles</h5>
+        <span class="badge bg-primary">{{ hojas|length }}</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover table-striped mb-0">
+            <thead>
+              <tr>
+                <th>Referencia</th>
+                <th>Fecha</th>
+                <th>Título</th>
+                <th>Presupuesto</th>
+                <th>Proyecto</th>
+                <th>Cliente</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for hoja, presupuesto, proyecto, cliente in hojas %}
+                <tr>
+                  <td>{{ hoja.referencia }}</td>
+                  <td>{{ hoja.fecha.strftime('%d/%m/%Y') }}</td>
+                  <td>{{ hoja.titulo or 'Sin título' }}</td>
+                  <td>
+                    <a href="{{ url_for('presupuestos.editar_presupuesto', id=presupuesto.id) }}">
+                      {{ presupuesto.referencia }}
+                    </a>
+                  </td>
+                  <td>
+                    <a href="{{ url_for('proyectos.editar_proyecto', id=proyecto.id) }}">
+                      {{ proyecto.nombre_proyecto or proyecto.referencia }}
+                    </a>
+                  </td>
+                  <td>{{ cliente.nombre }} {{ cliente.apellidos }}</td>
+                  <td>
+                    <span class="badge {{ 'bg-success' if hoja.estado == 'Aprobado' else 'bg-secondary' }}">
+                      {{ hoja.estado }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="btn-group">
+                      <a href="{{ url_for('hojas_trabajo.editar_hoja', id=hoja.id) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                        <i class="fas fa-pencil-alt"></i>
+                      </a>
+                      <a href="{{ url_for('hojas_trabajo.ver_pdf', id=hoja.id) }}" class="btn btn-sm btn-outline-danger" target="_blank" title="Ver PDF">
+                        <i class="fas fa-file-pdf"></i>
+                      </a>
+                      <a href="{{ url_for('hojas_trabajo.exportar_excel', id=hoja.id) }}" class="btn btn-sm btn-outline-success" title="Exportar a Excel">
+                        <i class="fas fa-file-excel"></i>
+                      </a>
+                      <button type="button" class="btn btn-sm btn-outline-danger" 
+                              onclick="confirmarEliminar('{{ hoja.id }}', '{{ hoja.referencia }}')" title="Eliminar">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-info">
+      <i class="fas fa-info-circle me-2"></i>
+      No hay hojas de trabajo disponibles. Para crear una hoja de trabajo, primero seleccione un presupuesto.
+    </div>
+  {% endif %}
+  
+  <!-- Modal de confirmación para eliminar -->
+  <div class="modal fade" id="eliminarModal" tabindex="-1" aria-labelledby="eliminarModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="eliminarModalLabel">Confirmar Eliminación</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          ¿Está seguro de que desea eliminar la hoja de trabajo <span id="hojaReferencia"></span>?
+          Esta acción no se puede deshacer.
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <form id="eliminarForm" method="post" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger">Eliminar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function confirmarEliminar(id, referencia) {
+    document.getElementById('hojaReferencia').textContent = referencia;
+    document.getElementById('eliminarForm').action = "{{ url_for('hojas_trabajo.eliminar_hoja', id=0) }}".replace('0', id);
+    var modal = new bootstrap.Modal(document.getElementById('eliminarModal'));
+    modal.show();
+  }
+</script>
+
+{% endblock %}

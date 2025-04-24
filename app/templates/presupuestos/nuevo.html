@@ -1,0 +1,147 @@
+<!-- app/templates/presupuestos/nuevo.html -->
+{% extends 'layout/base.html' %}
+{% from 'layout/components.html' import form_group, direccion_form %}
+
+{% block title %}AM3.1 - Nuevo Presupuesto{% endblock %}
+
+{% block page_title %}Nuevo Presupuesto{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <div class="row align-items-center">
+        <div class="col-md-9">
+            <div class="alert alert-info py-2 mb-0 d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-project-diagram fa-2x"></i>
+                </div>
+                <div class="d-flex flex-grow-1 flex-wrap">
+                    <div class="me-3"><strong>Proyecto:</strong> {{ proyecto.referencia }}</div>
+                    <div class="me-3"><strong>Cliente:</strong> {{ cliente.nombre }}</div>
+                    <div class="me-3"><strong>Nombre:</strong> {{ proyecto.nombre_proyecto or 'Sin nombre' }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 text-end">
+            <a href="{{ url_for('proyectos.listar_proyectos') }}" class="btn btn-sm btn-secondary me-1">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+            <a href="{{ url_for('presupuestos.presupuestos_por_proyecto', id_proyecto=proyecto.id) }}" class="btn btn-sm btn-info">
+                <i class="fas fa-list"></i> Presupuestos
+            </a>
+        </div>
+    </div>
+</div>
+
+<form method="post" action="{{ url_for('presupuestos.nuevo_presupuesto', id_proyecto=proyecto.id) }}" id="presupuesto-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <!-- Columna izquierda: Datos básicos y Dirección -->
+                <div class="col-md-6">
+                    <h5 class="card-title mb-2">Datos Básicos</h5>
+                    <div class="row">
+                        <div class="col-md-8">
+                            {{ form_group('titulo', 'Título del Presupuesto', required=true, placeholder='Ej: Reforma integral de cocina') }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form_group('tecnico_encargado', 'Técnico', type='select', options=[
+                                {'value': 'Blas', 'label': 'Blas'},
+                                {'value': 'Alejandro', 'label': 'Alejandro'},
+                                {'value': 'Toni', 'label': 'Toni'}
+                            ]) }}
+                        </div>
+                    </div>
+                    
+                    <h5 class="card-title mb-2 mt-3">Dirección de Obra</h5>
+                    <div class="d-flex align-items-center mb-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="copyProjectAddress()">
+                            <i class="fas fa-copy"></i> Copiar del proyecto
+                        </button>
+                    </div>
+                    
+                    <!-- Script para copiar dirección -->
+                    <script>
+                        function copyProjectAddress() {
+                            // Para el campo tipo_via (select) necesitamos seleccionar la opción
+                            const tipoViaSelect = document.getElementById('tipo_via');
+                            const tipoViaValue = "{{ proyecto.tipo_via or '' }}";
+                            
+                            // Seleccionar la opción correcta en el select
+                            if (tipoViaValue) {
+                                for (let i = 0; i < tipoViaSelect.options.length; i++) {
+                                    if (tipoViaSelect.options[i].value === tipoViaValue) {
+                                        tipoViaSelect.selectedIndex = i;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            // Rellenar el resto de campos
+                            document.getElementById('nombre_via').value = "{{ proyecto.nombre_via or '' }}";
+                            document.getElementById('numero_via').value = "{{ proyecto.numero or '' }}";
+                            document.getElementById('puerta').value = "{{ proyecto.puerta or '' }}";
+                            document.getElementById('codigo_postal').value = "{{ proyecto.codigo_postal or '' }}";
+                            document.getElementById('poblacion').value = "{{ proyecto.poblacion or '' }}";
+                        }
+                    </script>
+                    
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-3">
+                            {{ form_group('tipo_via', 'Tipo de Vía', type='select', options=[
+                                {'value': 'Calle', 'label': 'Calle'},
+                                {'value': 'Avenida', 'label': 'Avenida'},
+                                {'value': 'Plaza', 'label': 'Plaza'},
+                                {'value': 'Paseo', 'label': 'Paseo'},
+                                {'value': 'Carretera', 'label': 'Carretera'},
+                                {'value': 'Camino', 'label': 'Camino'},
+                                {'value': 'Otro', 'label': 'Otro'}
+                            ]) }}
+                        </div>
+                        <div class="col-md-9">
+                            {{ form_group('nombre_via', 'Nombre de la Vía') }}
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-2">
+                            {{ form_group('numero_via', 'Número') }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form_group('puerta', 'Puerta/Piso') }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form_group('codigo_postal', 'Código Postal') }}
+                        </div>
+                        <div class="col-md-5">
+                            {{ form_group('poblacion', 'Población') }}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Columna derecha: Notas Adicionales -->
+                <div class="col-md-6">
+                    <h5 class="card-title mb-2">Notas Adicionales</h5>
+                    {{ form_group('notas', 'Información adicional, condiciones, plazos...', type='textarea', rows=10, placeholder='') }}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-footer text-end">
+            <a href="{{ url_for('presupuestos.presupuestos_por_proyecto', id_proyecto=proyecto.id) }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Crear Presupuesto</button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Preguntar si desea usar la dirección del proyecto
+        const useProjectAddress = confirm('¿Desea usar la misma dirección del proyecto para el presupuesto?');
+        if (useProjectAddress) {
+            copyProjectAddress();
+        }
+    });
+</script>
+{% endblock %}
