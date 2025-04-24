@@ -43,14 +43,14 @@ def create_app(config_name='default'):
             host, db = host_db.split('/', 1)
             user, password = user_pass.split(':', 1)
             
-            # Conectar con un timeout de 5 segundos
-            print("Conectando a PostgreSQL (timeout: 5s)...")
+            # Conectar con un timeout de 15 segundos
+            print("Conectando a PostgreSQL (timeout: 15s)...")
             conn = psycopg2.connect(
                 dbname=db,
                 user=user,
                 password=password,
                 host=host,
-                connect_timeout=5
+                connect_timeout=15
             )
             conn.close()
             print("✅ Conexión a PostgreSQL verificada")

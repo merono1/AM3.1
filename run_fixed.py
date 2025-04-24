@@ -2,6 +2,10 @@
 import os
 import sys
 import subprocess
+from dotenv import load_dotenv
+
+# Cargar variables de entorno ANTES de cualquier otra operación
+load_dotenv()
 
 # Establecer variable de entorno para evitar conflictos
 os.environ['PYTHONPATH'] = os.path.dirname(os.path.abspath(__file__))

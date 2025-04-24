@@ -47,7 +47,7 @@ def check_db():
         from sqlalchemy import inspect
         from app import db as flask_db
         
-        inspector = inspect(db.engine)
+        inspector = inspect(flask_db.engine)
         tables = inspector.get_table_names()
         tables_html = "\n".join([f"<li>{table}</li>" for table in tables])
         
