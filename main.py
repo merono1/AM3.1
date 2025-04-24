@@ -1,18 +1,12 @@
 # main.py
 import os
 import sqlite3
-from dotenv import load_dotenv
-from pathlib import Path
 
-# Cargar variables de entorno desde .env
-load_dotenv()
-
-# Verificar tipo de base de datos y configuración
-using_postgres = os.environ.get('DATABASE_URL') is not None
-
-# Configuración para SQLite si no estamos usando PostgreSQL
-db_path = os.environ.get('DB_PATH', 'app/data/app.db') if not using_postgres else None
-db_dir = Path(db_path).parent if db_path else None
+# Importar la configuración centralizada
+from config import (
+    BASE_DIR, DB_PATH, DATABASE_URL, DB_TYPE, PORT,
+    ensure_db_dir_exists, ensure_dirs_exist
+)
 
 # Variable para controlar si ya se ejecutó la inicialización
 is_second_run = os.environ.get('FLASK_RUN_FROM_RELOAD') == '1'
@@ -20,22 +14,18 @@ is_second_run = os.environ.get('FLASK_RUN_FROM_RELOAD') == '1'
 if not is_second_run:
     print("=== Verificación de base de datos ===")
     
+    using_postgres = DB_TYPE == "postgres"
     if using_postgres:
-        print(f"✅ Usando PostgreSQL: {os.environ.get('DATABASE_URL', '').split('@')[1] if '@' in os.environ.get('DATABASE_URL', '') else 'configurada'}")
+        print(f"✅ Usando PostgreSQL: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else 'configurada'}")
     else:
-        print(f"Ruta de la base de datos SQLite: {db_path}")
+        db_dir = ensure_db_dir_exists()
+        print(f"Ruta de la base de datos SQLite: {DB_PATH}")
         print(f"Directorio: {db_dir}")
-        
-        # Asegurar que el directorio existe para SQLite
-        try:
-            os.makedirs(db_dir, exist_ok=True)
-            print(f"✅ Directorio verificado/creado")
-        except Exception as e:
-            print(f"❌ Error al crear directorio: {e}")
+        print(f"✅ Directorio verificado/creado")
         
         # Verificar permisos para SQLite
         try:
-            with open(db_path, 'a'):
+            with open(DB_PATH, 'a'):
                 pass
             print(f"✅ Archivo de base de datos accesible/creado")
         except Exception as e:
@@ -50,11 +40,10 @@ app = create_app(os.getenv('FLASK_ENV', 'default'))
 @app.route('/check_db')
 def check_db():
     from flask import render_template_string
-    import os
     
     # Determinar si usamos PostgreSQL o SQLite
-    using_postgres = os.environ.get('DATABASE_URL') is not None
-    db_path_display = db_path if db_path else 'N/A (usando PostgreSQL)'
+    using_postgres = DB_TYPE == "postgres"
+    db_path_display = DB_PATH if not using_postgres else 'N/A (usando PostgreSQL)'
     
     try:
         # Obtener las tablas disponibles utilizando SQLAlchemy
@@ -64,10 +53,10 @@ def check_db():
         
         inspector = inspect(db.engine)
         tables = inspector.get_table_names()
-        tables_html = "\n".join([f"<li>{table}</li>" for table in tables])
+        tables_html = "\\n".join([f"<li>{table}</li>" for table in tables])
         
         connection_type = "PostgreSQL" if using_postgres else "SQLite"
-        db_info = os.environ.get('DATABASE_URL', '').split('@')[1] if using_postgres and '@' in os.environ.get('DATABASE_URL', '') else db_path_display
+        db_info = DATABASE_URL.split('@')[1] if using_postgres and '@' in DATABASE_URL else db_path_display
         
         return render_template_string("""<!DOCTYPE html>
             <html>
@@ -148,11 +137,11 @@ def check_db():
 
 if __name__ == '__main__':
     if not is_second_run:
-        print("\n=== Iniciando aplicación AM3.1 ===")
+        print("\\n=== Iniciando aplicación AM3.1 ===")
         print(f"Configuración: {os.getenv('FLASK_ENV', 'default')}")
-        print(f"Escuchando en: http://localhost:{os.getenv('PORT', 5000)}")
+        print(f"Escuchando en: http://localhost:{PORT}")
     
     # Marcar que está ejecutándose para el reinicio
     os.environ['FLASK_RUN_FROM_RELOAD'] = '1'
     
-    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
+    app.run(host='0.0.0.0', port=PORT)
