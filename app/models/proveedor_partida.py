@@ -8,6 +8,8 @@ class ProveedorPartida(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     id_partida = db.Column(db.Integer, db.ForeignKey('partidas_hojas.id', ondelete='CASCADE'), nullable=False)
     id_proveedor = db.Column(db.Integer, db.ForeignKey('proveedores.id', ondelete='CASCADE'), nullable=False)
+    unitario = db.Column(db.String(10))  # ML, M2, M3, PA, UD, etc.
+    cantidad = db.Column(db.Float, default=1)
     precio = db.Column(db.Float)
     margen_proveedor = db.Column(db.Float)
     final_proveedor = db.Column(db.Float)
@@ -24,8 +26,12 @@ class ProveedorPartida(db.Model):
         
     def calcular_final_proveedor(self):
         """Calcula el precio final del proveedor aplicando el margen"""
+        cantidad = self.cantidad or 1
         if self.precio is not None and self.margen_proveedor is not None:
-            self.final_proveedor = self.precio * (1 + self.margen_proveedor / 100)
+            # Primero calculamos el total (precio * cantidad)
+            total = self.precio * cantidad
+            # Luego aplicamos el margen
+            self.final_proveedor = total * (1 + self.margen_proveedor / 100)
         else:
-            self.final_proveedor = self.precio or 0
+            self.final_proveedor = (self.precio or 0) * cantidad
         return self.final_proveedor

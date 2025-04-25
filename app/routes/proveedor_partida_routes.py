@@ -1,28 +1,79 @@
 
 # app/routes/proveedor_partida_routes.py
-from flask import Blueprint, request, jsonify, flash
+from flask import Blueprint, request, jsonify, flash, render_template, redirect, url_for
 from app.models.proveedor_partida import ProveedorPartida
-from app.models.hoja_trabajo import PartidaHoja
+from app.models.hoja_trabajo import PartidaHoja, HojaTrabajo
 from app.models.proveedor import Proveedor
 from app.services.db_service import get_by_id
 from app import db
 from datetime import datetime
 import traceback
 
-proveedor_partida_bp = Blueprint('proveedor_partida', __name__, url_prefix='/api/proveedores-partidas')
+proveedor_partida_bp = Blueprint('proveedor_partida', __name__, url_prefix='/proveedores-partidas')
 
-@proveedor_partida_bp.route('/asignar', methods=['POST'])
+# Crear un Blueprint específico para la API
+from flask import Blueprint
+
+api_proveedor_partida_bp = Blueprint('api_proveedor_partida', __name__, url_prefix='/api/proveedores-partidas')
+
+# Registrar el blueprint de API
+def register_api_routes(app):
+    app.register_blueprint(api_proveedor_partida_bp)
+
+# Gestión visual de proveedores para una partida
+@proveedor_partida_bp.route('/gestionar/<int:id_partida>', methods=['GET'])
+def gestionar(id_partida):
+    """Página para gestionar los proveedores de una partida"""
+    try:
+        # Obtener la partida
+        partida = get_by_id(PartidaHoja, id_partida)
+        if not partida:
+            flash('Partida no encontrada', 'danger')
+            return redirect(url_for('hojas_trabajo.listar_hojas_trabajo'))
+            
+        # Obtener la hoja de trabajo
+        hoja = get_by_id(HojaTrabajo, partida.id_hoja)
+        
+        # Obtener los proveedores asignados a esta partida
+        proveedores_partida = db.session.query(
+            ProveedorPartida, Proveedor
+        ).join(
+            Proveedor, ProveedorPartida.id_proveedor == Proveedor.id
+        ).filter(
+            ProveedorPartida.id_partida == id_partida
+        ).all()
+        
+        # Obtener todos los proveedores disponibles
+        proveedores = Proveedor.query.all()
+        
+        return render_template(
+            'proveedores/gestionar_partida.html',
+            partida=partida,
+            hoja=hoja,
+            proveedores_partida=proveedores_partida,
+            proveedores=proveedores
+        )
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+        print(f"Error al gestionar proveedores: {str(e)}")
+        traceback.print_exc()
+        return redirect(url_for('hojas_trabajo.listar_hojas_trabajo'))
+
+@api_proveedor_partida_bp.route('/asignar', methods=['POST'])
 def asignar_proveedor():
     """Asigna un proveedor a una partida"""
     try:
         # Obtener datos del formulario
         id_partida = request.form.get('id_partida')
         id_proveedor = request.form.get('id_proveedor')
+        unitario = request.form.get('unitario')
+        cantidad = float(request.form.get('cantidad') or 1)
         precio = float(request.form.get('precio') or 0)
-        margen = float(request.form.get('margen') or 0)
+        margen = float(request.form.get('margen_proveedor', 0))
         notas = request.form.get('notas', '')
+        es_principal = request.form.get('es_principal') == 'true'
         
-        if not id_partida or not id_proveedor:
+        if not id_partida or not id_proveedor or not unitario:
             return jsonify({'success': False, 'error': 'Faltan datos obligatorios'}), 400
         
         # Verificar si la partida y el proveedor existen
@@ -72,6 +123,8 @@ def asignar_proveedor():
         proveedor_partida = ProveedorPartida(
             id_partida=id_partida,
             id_proveedor=id_proveedor,
+            unitario=unitario,
+            cantidad=cantidad,
             precio=precio,
             margen_proveedor=margen,
             notas=notas,
@@ -86,7 +139,6 @@ def asignar_proveedor():
         db.session.commit()
         
         # Si se marca como principal, actualizar la partida
-        es_principal = request.form.get('es_principal') == 'true'
         if es_principal:
             partida.id_proveedor_principal = id_proveedor
             partida.precio_proveedor = precio
@@ -114,7 +166,7 @@ def asignar_proveedor():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@proveedor_partida_bp.route('/eliminar/<int:id>', methods=['DELETE'])
+@api_proveedor_partida_bp.route('/eliminar/<int:id>', methods=['DELETE'])
 def eliminar_proveedor_partida(id):
     """Elimina la asignación de un proveedor a una partida"""
     try:
@@ -143,7 +195,7 @@ def eliminar_proveedor_partida(id):
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@proveedor_partida_bp.route('/por-partida/<int:id_partida>', methods=['GET'])
+@api_proveedor_partida_bp.route('/por-partida/<int:id_partida>', methods=['GET'])
 def obtener_proveedores_partida(id_partida):
     """Obtiene todos los proveedores asignados a una partida"""
     try:
@@ -188,7 +240,7 @@ def obtener_proveedores_partida(id_partida):
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@proveedor_partida_bp.route('/establecer-principal', methods=['POST'])
+@api_proveedor_partida_bp.route('/establecer-principal', methods=['POST'])
 def establecer_proveedor_principal():
     """Establece un proveedor como principal para una partida"""
     try:
@@ -228,7 +280,7 @@ def establecer_proveedor_principal():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@proveedor_partida_bp.route('/actualizar/<int:id>', methods=['POST'])
+@api_proveedor_partida_bp.route('/actualizar/<int:id>', methods=['POST'])
 def actualizar_proveedor_partida(id):
     """Actualiza la información de un proveedor asignado a una partida"""
     try:

@@ -91,7 +91,7 @@
                    data-partida-index="{{ cap.partidas|length }}">
                 {% for part in partidas_por_capitulo[cap.numero] if cap.numero in partidas_por_capitulo %}
                   {% set part_idx = loop.index0 %}
-                  <div class="partida border p-2 mb-2" data-partida-id="{{ part.id }}">
+                  <div class="partida border p-2 mb-2">
                     <div class="row">
                       <div class="col-12 mb-2">
                         <label class="form-label small-label">Descripción de la partida</label>
@@ -173,121 +173,27 @@
                                readonly>
                       </div>
                     </div>
-                    
-                    <!-- Proveedor Principal -->
+                    <!-- Campos de proveedor (reemplazados por botones) -->
                     <div class="row mt-2">
-                      <div class="col-md-12">
-                        <h6 class="border-bottom pb-2">Proveedor Principal</h6>
-                      </div>
-                      <div class="col-md-4">
-                        <label class="form-label small-label">Proveedor</label>
-                        <select class="form-select proveedor-select"
-                                name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][id_proveedor]"
-                                id="proveedor_{{ chap_idx }}_{{ part_idx }}"
-                                data-partida-id="{{ part.id }}">
-                          <option value="">Seleccione un proveedor</option>
-                          {% for prov in proveedores %}
-                            <option value="{{ prov.id }}" {% if part.id_proveedor_principal == prov.id %}selected{% endif %}>{{ prov.nombre }} ({{ prov.especialidad }})</option>
-                          {% endfor %}
-                        </select>
-                      </div>
-                      <div class="col-md-3">
-                        <label class="form-label small-label">Precio Proveedor (€)</label>
-                        <input type="number" step="any" class="form-control proveedor-precio"
-                               name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][precio_proveedor]"
-                               id="precio_proveedor_{{ chap_idx }}_{{ part_idx }}"
-                               value="{{ part.precio_proveedor or 0 }}"
-                               title="Precio ofrecido por el proveedor">
-                      </div>
-                      <div class="col-md-3">
-                        <label class="form-label small-label">Margen Real (%)</label>
-                        <input type="number" class="form-control margen-real-display" 
-                               id="margen_real_{{ chap_idx }}_{{ part_idx }}" 
-                               value="{{ ((part.final or 0) / (part.precio_proveedor or 1) - 1) * 100 if part.precio_proveedor else 0 | round(2) }}"
-                               readonly>
-                      </div>
-                      <div class="col-md-2 d-flex align-items-end">
-                        <button type="button" class="btn btn-sm btn-info ms-auto" 
-                                data-bs-toggle="collapse" 
-                                data-bs-target="#proveedoresAdicionales_{{ part.id }}" 
-                                aria-expanded="false">
-                          <i class="fas fa-caret-down"></i> Proveedores Adicionales
+                      <!-- Campos ocultos para mantener los valores pero no mostrarlos en UI -->
+                      <input type="hidden" name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][id_proveedor]" 
+                         id="proveedor_{{ chap_idx }}_{{ part_idx }}" 
+                         value="{{ part.id_proveedor_principal }}" 
+                         data-partida-id="{{ part.id }}">
+                      <input type="hidden" name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][precio_proveedor]" 
+                         id="precio_proveedor_{{ chap_idx }}_{{ part_idx }}" 
+                         value="{{ part.precio_proveedor or 0 }}">
+                      <div class="col-12 mt-2 d-flex justify-content-between">
+                        <div>
+                          <button type="button" class="btn btn-sm btn-info btn-proveedores" title="Gestionar proveedores adicionales"
+                                  onclick="window.location.href='{{ url_for('proveedor_partida.gestionar', id_partida=part.id) }}'">
+                            Proveedores
+                          </button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-danger deletePartidaBtn" title="Borrar esta partida">
+                          Borrar Partida
                         </button>
                       </div>
-                    </div>
-                    
-                    <!-- Proveedores Adicionales (colapsable) -->
-                    <div class="collapse mt-2" id="proveedoresAdicionales_{{ part.id }}">
-                      <div class="card card-body bg-light">
-                        <h6 class="border-bottom pb-2">Proveedores Adicionales</h6>
-                        
-                        <!-- Tabla de proveedores adicionales -->
-                        <div class="table-responsive">
-                          <table class="table table-sm table-bordered table-hover" id="tablaProveedores_{{ part.id }}">
-                            <thead class="table-secondary">
-                              <tr>
-                                <th>Proveedor</th>
-                                <th>Precio (€)</th>
-                                <th>Margen (%)</th>
-                                <th>Final Proveedor (€)</th>
-                                <th>Acciones</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {% if part.id in proveedores_por_partida %}
-                                {% for pp in proveedores_por_partida[part.id] %}
-                                  {% if pp and hasattr(pp, 'proveedor') %}
-                                    <tr data-proveedor-partida-id="{{ pp.id }}">
-                                      <td>{{ pp.proveedor.nombre }}</td>
-                                      <td>
-                                        <input type="number" step="any" class="form-control form-control-sm precio-proveedor-input" 
-                                              value="{{ pp.precio or 0 }}" data-original-value="{{ pp.precio or 0 }}">
-                                      </td>
-                                      <td>
-                                        <input type="number" step="any" class="form-control form-control-sm margen-proveedor-input" 
-                                              value="{% if hasattr(pp, 'margen_proveedor') %}{{ pp.margen_proveedor or 0 }}{% else %}0{% endif %}" 
-                                              data-original-value="{% if hasattr(pp, 'margen_proveedor') %}{{ pp.margen_proveedor or 0 }}{% else %}0{% endif %}">
-                                      </td>
-                                      <td>
-                                        <input type="number" step="any" class="form-control form-control-sm final-proveedor-display" 
-                                              value="{% if hasattr(pp, 'final_proveedor') %}{{ pp.final_proveedor or 0 }}{% else %}0{% endif %}" readonly>
-                                      </td>
-                                      <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-outline-success guardar-proveedor-btn" style="display:none;" title="Guardar cambios">
-                                          <i class="fas fa-save"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-primary establecer-principal-btn" title="Establecer como principal">
-                                          <i class="fas fa-star"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger eliminar-proveedor-btn" title="Eliminar proveedor">
-                                          <i class="fas fa-trash"></i>
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  {% endif %}
-                                {% endfor %}
-                              {% endif %}
-                            </tbody>
-                            <tfoot>
-                              <tr>
-                                <td colspan="5">
-                                  <button type="button" class="btn btn-sm btn-success w-100 agregar-proveedor-btn" 
-                                          data-partida-id="{{ part.id }}" 
-                                          title="Agregar un nuevo proveedor">
-                                    <i class="fas fa-plus"></i> Agregar Proveedor
-                                  </button>
-                                </td>
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="col-12 mt-2 text-end">
-                      <button type="button" class="btn btn-sm btn-danger deletePartidaBtn" title="Borrar esta partida">
-                        Borrar Partida
-                      </button>
                     </div>
                   </div>
                 {% endfor %}
@@ -321,59 +227,6 @@
       </button>
     </div>
   </form>
-  
-  <!-- Modal para agregar proveedor adicional -->
-  <div class="modal fade" id="agregarProveedorModal" tabindex="-1" aria-labelledby="agregarProveedorModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="agregarProveedorModalLabel">Agregar Proveedor</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form id="agregarProveedorForm">
-            <input type="hidden" id="modal_partida_id" value="">
-            
-            <div class="mb-3">
-              <label for="modal_proveedor" class="form-label">Proveedor</label>
-              <select class="form-select" id="modal_proveedor" required>
-                <option value="">Seleccione un proveedor</option>
-                {% for prov in proveedores %}
-                  <option value="{{ prov.id }}">{{ prov.nombre }} ({{ prov.especialidad }})</option>
-                {% endfor %}
-              </select>
-            </div>
-            
-            <div class="mb-3">
-              <label for="modal_precio" class="form-label">Precio (€)</label>
-              <input type="number" step="any" class="form-control" id="modal_precio" value="0" required>
-            </div>
-            
-            <div class="mb-3">
-              <label for="modal_margen" class="form-label">Margen (%)</label>
-              <input type="number" step="any" class="form-control" id="modal_margen" value="0" required>
-            </div>
-            
-            <div class="mb-3">
-              <label for="modal_notas" class="form-label">Notas</label>
-              <textarea class="form-control" id="modal_notas" rows="3"></textarea>
-            </div>
-            
-            <div class="form-check mb-3">
-              <input class="form-check-input" type="checkbox" id="modal_es_principal">
-              <label class="form-check-label" for="modal_es_principal">
-                Establecer como proveedor principal
-              </label>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-success" id="guardarProveedorBtn">Guardar</button>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- SCRIPT PARA MANEJO DINÁMICO DE CAPÍTULOS Y PARTIDAS -->
@@ -395,24 +248,16 @@
   }
 
   function updateFinalForMargin(margenInput) {
-    const row = margenInput.closest('.row');
-    if (row) {
-      const partida = row.closest('.partida');
-      const totalInput = row.querySelector('input[name*="[total]"]');
-      const finalInput = row.querySelector('input[name*="[final]"]');
-      const total = parseFloat(totalInput.value) || 0;
-      const margen = parseFloat(margenInput.value) || 0;
-      finalInput.value = (total * (1 + margen / 100)).toFixed(2);
-        
-      // Actualizar margen real cuando cambia el margen
-      if (partida) {
-        const precioProveedorInput = partida.querySelector('.proveedor-precio');
-        if (precioProveedorInput) {
-          actualizarMargenReal(precioProveedorInput);
-        }
+  const row = margenInput.closest('.row');
+  if (row) {
+  const partida = row.closest('.partida');
+  const totalInput = row.querySelector('input[name*="[total]"]');
+  const finalInput = row.querySelector('input[name*="[final]"]');
+  const total = parseFloat(totalInput.value) || 0;
+  const margen = parseFloat(margenInput.value) || 0;
+    finalInput.value = (total * (1 + margen / 100)).toFixed(2);
       }
     }
-  }
 
   function distributeNewAverage(newAvg) {
     const marginInputs = document.querySelectorAll('input[name*="[margen]"]');
@@ -423,221 +268,6 @@
       updateFinalForMargin(input);
     });
     recalcAverageMargin();
-  }
-
-  // Función para calcular final_proveedor en el frontend
-  function calcularFinalProveedor(precio, margen) {
-    precio = parseFloat(precio) || 0;
-    margen = parseFloat(margen) || 0;
-    return precio * (1 + margen / 100);
-  }
-
-  // Función para añadir un proveedor a la tabla
-  function agregarProveedorATabla(tablaId, proveedorData) {
-    const tabla = document.getElementById(tablaId);
-    if (!tabla) return;
-    
-    const tbody = tabla.querySelector('tbody');
-    const newRow = document.createElement('tr');
-    newRow.setAttribute('data-proveedor-partida-id', proveedorData.id);
-    
-    // Crear la fila con los datos del proveedor
-    newRow.innerHTML = `
-      <td>${proveedorData.nombre_proveedor}</td>
-      <td>
-        <input type="number" step="any" class="form-control form-control-sm precio-proveedor-input" 
-               value="${proveedorData.precio}" data-original-value="${proveedorData.precio}">
-      </td>
-      <td>
-        <input type="number" step="any" class="form-control form-control-sm margen-proveedor-input" 
-               value="${proveedorData.margen_proveedor}" data-original-value="${proveedorData.margen_proveedor}">
-      </td>
-      <td>
-        <input type="number" step="any" class="form-control form-control-sm final-proveedor-display" 
-               value="${proveedorData.final_proveedor}" readonly>
-      </td>
-      <td class="text-center">
-        <button type="button" class="btn btn-sm btn-outline-success guardar-proveedor-btn" style="display:none;" title="Guardar cambios">
-          <i class="fas fa-save"></i>
-        </button>
-        <button type="button" class="btn btn-sm btn-outline-primary establecer-principal-btn" title="Establecer como principal">
-          <i class="fas fa-star"></i>
-        </button>
-        <button type="button" class="btn btn-sm btn-outline-danger eliminar-proveedor-btn" title="Eliminar proveedor">
-          <i class="fas fa-trash"></i>
-        </button>
-      </td>
-    `;
-    
-    tbody.appendChild(newRow);
-    
-    // Configurar event listeners para la nueva fila
-    setupProveedorRowListeners(newRow);
-  }
-
-  // Función para inicializar listeners de una fila de proveedor
-  function setupProveedorRowListeners(row) {
-    // Inputs de precio y margen
-    const precioInput = row.querySelector('.precio-proveedor-input');
-    const margenInput = row.querySelector('.margen-proveedor-input');
-    const finalDisplay = row.querySelector('.final-proveedor-display');
-    const guardarBtn = row.querySelector('.guardar-proveedor-btn');
-    
-    // Botones de acción
-    const establecerPrincipalBtn = row.querySelector('.establecer-principal-btn');
-    const eliminarBtn = row.querySelector('.eliminar-proveedor-btn');
-    
-    // Actualizar el final cuando cambia el precio o el margen
-    function actualizarFinalProveedor() {
-      const precio = parseFloat(precioInput.value) || 0;
-      const margen = parseFloat(margenInput.value) || 0;
-      finalDisplay.value = calcularFinalProveedor(precio, margen).toFixed(2);
-      
-      // Mostrar el botón de guardar si el valor ha cambiado
-      const precioOriginal = parseFloat(precioInput.getAttribute('data-original-value')) || 0;
-      const margenOriginal = parseFloat(margenInput.getAttribute('data-original-value')) || 0;
-      
-      if (precio !== precioOriginal || margen !== margenOriginal) {
-        guardarBtn.style.display = 'inline-block';
-      } else {
-        guardarBtn.style.display = 'none';
-      }
-    }
-    
-    precioInput.addEventListener('input', actualizarFinalProveedor);
-    margenInput.addEventListener('input', actualizarFinalProveedor);
-    
-    // Guardar cambios
-    guardarBtn.addEventListener('click', function() {
-      const proveedorPartidaId = row.getAttribute('data-proveedor-partida-id');
-      
-      // Preparar los datos para enviar
-      const formData = new FormData();
-      formData.append('precio', precioInput.value);
-      formData.append('margen_proveedor', margenInput.value);
-      
-      // Llamar a la API para actualizar
-      fetch(`/api/proveedores-partidas/actualizar/${proveedorPartidaId}`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          // Actualizar los valores originales
-          precioInput.setAttribute('data-original-value', precioInput.value);
-          margenInput.setAttribute('data-original-value', margenInput.value);
-          
-          // Ocultar el botón de guardar
-          guardarBtn.style.display = 'none';
-          
-          // Mostrar confirmación
-          alert('Proveedor actualizado correctamente');
-        } else {
-          alert('Error al actualizar: ' + data.error);
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        alert('Error de conexión al actualizar proveedor');
-      });
-    });
-    
-    // Establecer como principal
-    establecerPrincipalBtn.addEventListener('click', function() {
-      const proveedorPartidaId = row.getAttribute('data-proveedor-partida-id');
-      const partida = row.closest('.partida');
-      const partidaId = partida.getAttribute('data-partida-id');
-      
-      // Obtener el id_proveedor
-      fetch(`/api/proveedores-partidas/por-partida/${partidaId}`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            // Buscar el proveedor correspondiente a esta fila
-            const proveedor = data.proveedores.find(p => p.id.toString() === proveedorPartidaId);
-            
-            if (proveedor) {
-              // Preparar los datos para enviar
-              const formData = new FormData();
-              formData.append('id_partida', partidaId);
-              formData.append('id_proveedor', proveedor.id_proveedor);
-              
-              // Llamar a la API para establecer como principal
-              fetch('/api/proveedores-partidas/establecer-principal', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                  'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
-                }
-              })
-              .then(response => response.json())
-              .then(data => {
-                if (data.success) {
-                  // Actualizar la interfaz
-                  const proveedorPrincipalSelect = partida.querySelector('.proveedor-select');
-                  const precioPrincipalInput = partida.querySelector('.proveedor-precio');
-                  
-                  if (proveedorPrincipalSelect && precioPrincipalInput) {
-                    proveedorPrincipalSelect.value = proveedor.id_proveedor;
-                    precioPrincipalInput.value = precioInput.value;
-                    
-                    // Actualizar el margen real
-                    const finalPartidaInput = partida.querySelector('input[name*="[final]"]');
-                    const margenRealInput = partida.querySelector('.margen-real-display');
-                    
-                    if (finalPartidaInput && margenRealInput) {
-                      const final = parseFloat(finalPartidaInput.value) || 0;
-                      const precioProveedor = parseFloat(precioInput.value) || 1;
-                      const margenReal = ((final / precioProveedor) - 1) * 100;
-                      margenRealInput.value = margenReal.toFixed(2);
-                    }
-                  }
-                  
-                  alert('Proveedor establecido como principal correctamente');
-                } else {
-                  alert('Error al establecer principal: ' + data.error);
-                }
-              })
-              .catch(error => {
-                console.error('Error:', error);
-                alert('Error de conexión al establecer proveedor principal');
-              });
-            }
-          }
-        });
-    });
-    
-    // Eliminar proveedor
-    eliminarBtn.addEventListener('click', function() {
-      if (confirm('¿Está seguro de eliminar este proveedor?')) {
-        const proveedorPartidaId = row.getAttribute('data-proveedor-partida-id');
-        
-        fetch(`/api/proveedores-partidas/eliminar/${proveedorPartidaId}`, {
-          method: 'DELETE',
-          headers: {
-            'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
-          }
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            // Eliminar la fila
-            row.remove();
-            alert('Proveedor eliminado correctamente');
-          } else {
-            alert('Error al eliminar: ' + data.error);
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          alert('Error de conexión al eliminar proveedor');
-        });
-      }
-    });
   }
 
   function addPartida(capIndex) {
@@ -719,46 +349,27 @@
                  readonly>
         </div>
       </div>
-      <!-- Proveedor Principal -->
+      <!-- Campos de proveedor (reemplazados por botones) -->
       <div class="row mt-2">
-        <div class="col-md-12">
-          <h6 class="border-bottom pb-2">Proveedor Principal</h6>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label small-label">Proveedor</label>
-          <select class="form-select proveedor-select"
-                  name="capitulos[${capIndex}][partidas][${partIndex}][id_proveedor]"
-                  id="proveedor_${capIndex}_${partIndex}">
-            <option value="">Seleccione un proveedor</option>
-            ${proveedoresOptions}
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label small-label">Precio Proveedor (€)</label>
-          <input type="number" step="any" class="form-control proveedor-precio"
-                 name="capitulos[${capIndex}][partidas][${partIndex}][precio_proveedor]"
-                 id="precio_proveedor_${capIndex}_${partIndex}"
-                 value="0"
-                 title="Precio ofrecido por el proveedor">
-        </div>
-        <div class="col-md-3">
-          <label class="form-label small-label">Margen Real (%)</label>
-          <input type="number" class="form-control margen-real-display" 
-                 id="margen_real_${capIndex}_${partIndex}" 
-                 value="0"
-                 readonly>
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-          <button type="button" class="btn btn-sm btn-info ms-auto" 
-                  title="Guardar primero la partida para poder agregar múltiples proveedores">
-            <i class="fas fa-caret-down"></i> Proveedores Adicionales
+        <!-- Campos ocultos para mantener los valores pero no mostrarlos en UI -->
+        <input type="hidden" name="capitulos[${capIndex}][partidas][${partIndex}][id_proveedor]" 
+               id="proveedor_${capIndex}_${partIndex}" 
+               value="" 
+               data-partida-id="0">
+        <input type="hidden" name="capitulos[${capIndex}][partidas][${partIndex}][precio_proveedor]" 
+               id="precio_proveedor_${capIndex}_${partIndex}" 
+               value="0">
+        <div class="col-12 mt-2 d-flex justify-content-between">
+          <div>
+            <button type="button" class="btn btn-sm btn-info btn-proveedores" title="Gestionar proveedores" disabled>
+              Proveedores
+            </button>
+            <small class="text-muted">(Guardar primero para activar)</small>
+          </div>
+          <button type="button" class="btn btn-sm btn-danger deletePartidaBtn" title="Borrar esta partida">
+            Borrar Partida
           </button>
         </div>
-      </div>
-      <div class="col-12 mt-2 text-end">
-        <button type="button" class="btn btn-sm btn-danger deletePartidaBtn" title="Borrar esta partida">
-          Borrar Partida
-        </button>
       </div>
     `;
     partidasContainer.appendChild(partDiv);
@@ -787,24 +398,11 @@
     // Agregar barra de herramientas para el nuevo editor
     setupEditorToolbar();
 
-    // Configurar los listeners para actualizar el total y el precioProveedor
-    const precioProveedorInput = partDiv.querySelector(`input[id="precio_proveedor_${capIndex}_${partIndex - 1}"]`);
-    if (precioProveedorInput) {
-      precioProveedorInput.addEventListener('input', function() {
-        actualizarMargenReal(this);
-      });
-    }
-
     function updateTotal() {
       const cantidadVal = parseFloat(cantidadInput.value) || 0;
       const precioVal   = parseFloat(precioInput.value)   || 0;
       totalInput.value  = (cantidadVal * precioVal).toFixed(2);
       updateFinalForMargin(margenInput);
-      
-      // Actualizar el margen real
-      if (precioProveedorInput) {
-        actualizarMargenReal(precioProveedorInput);
-      }
     }
     cantidadInput.addEventListener('input', updateTotal);
     precioInput.addEventListener('input', updateTotal);
@@ -812,26 +410,6 @@
       updateFinalForMargin(margenInput);
       recalcAverageMargin();
     });
-  }
-
-  function actualizarMargenReal(precioProveedorInput) {
-    const partida = precioProveedorInput.closest('.partida');
-    if (!partida) return;
-    
-    const finalInput = partida.querySelector('input[name*="[final]"]');
-    const margenRealInput = partida.querySelector('.margen-real-display');
-    
-    if (!finalInput || !margenRealInput) return;
-    
-    const final = parseFloat(finalInput.value) || 0;
-    const precioProveedor = parseFloat(precioProveedorInput.value) || 0;
-    
-    if (precioProveedor > 0) {
-      const margenReal = ((final / precioProveedor) - 1) * 100;
-      margenRealInput.value = margenReal.toFixed(2);
-    } else {
-      margenRealInput.value = "0";
-    }
   }
 
   function addCapitulo() {
@@ -884,145 +462,14 @@
       capDiv.remove();
     });
     capDiv.querySelector('.addPartidaBtn').addEventListener('click', function() {
-      addPartida(newChapIndex);
+      const capIndex = capDiv.getAttribute('data-capitulo-index');
+      addPartida(capIndex);
     });
   }
 
   document.addEventListener("DOMContentLoaded", function(){
     // Variable global para almacenar las opciones de proveedores
     let proveedoresOptions = '';
-    
-    // Configurar modal para agregar proveedores
-    const agregarProveedorModal = new bootstrap.Modal(document.getElementById('agregarProveedorModal'));
-    
-    // Botón para guardar el proveedor desde el modal
-    document.getElementById('guardarProveedorBtn').addEventListener('click', function() {
-      const partida_id = document.getElementById('modal_partida_id').value;
-      const proveedor_id = document.getElementById('modal_proveedor').value;
-      const precio = document.getElementById('modal_precio').value;
-      const margen = document.getElementById('modal_margen').value;
-      const notas = document.getElementById('modal_notas').value;
-      const es_principal = document.getElementById('modal_es_principal').checked;
-      
-      if (!partida_id || !proveedor_id || !precio) {
-        alert('Por favor complete los campos obligatorios');
-        return;
-      }
-      
-      // Preparar los datos para enviar
-      const formData = new FormData();
-      formData.append('id_partida', partida_id);
-      formData.append('id_proveedor', proveedor_id);
-      formData.append('precio', precio);
-      formData.append('margen', margen);
-      formData.append('notas', notas);
-      formData.append('es_principal', es_principal);
-      
-      // Enviar a la API
-      fetch('/api/proveedores-partidas/asignar', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          // Añadir a la tabla
-          const tablaId = `tablaProveedores_${partida_id}`;
-          agregarProveedorATabla(tablaId, data.proveedor_partida);
-          
-          // Si se marcó como principal, actualizar el selector principal
-          if (es_principal) {
-            const partida = document.querySelector(`.partida[data-partida-id="${partida_id}"]`);
-            if (partida) {
-              const proveedorSelect = partida.querySelector('.proveedor-select');
-              const precioProveedorInput = partida.querySelector('.proveedor-precio');
-              
-              if (proveedorSelect && precioProveedorInput) {
-                proveedorSelect.value = proveedor_id;
-                precioProveedorInput.value = precio;
-                
-                // Actualizar margen real
-                actualizarMargenReal(precioProveedorInput);
-              }
-            }
-          }
-          
-          // Cerrar modal y limpiar
-          agregarProveedorModal.hide();
-          document.getElementById('agregarProveedorForm').reset();
-          
-          alert('Proveedor asignado correctamente');
-        } else {
-          alert('Error al asignar proveedor: ' + data.error);
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        alert('Error de conexión al asignar proveedor');
-      });
-    });
-    
-    // Configurar botones para agregar proveedor
-    document.querySelectorAll('.agregar-proveedor-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        const partida_id = this.getAttribute('data-partida-id');
-        document.getElementById('modal_partida_id').value = partida_id;
-        agregarProveedorModal.show();
-      });
-    });
-    
-    // Inicializar las filas de proveedores existentes
-    document.querySelectorAll('table[id^="tablaProveedores_"] tbody tr').forEach(function(row) {
-      setupProveedorRowListeners(row);
-    });
-    
-    // Cargar los proveedores desde la API para los nuevos selectores
-    fetch('/api/proveedores/listar')
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          // Crear las opciones de proveedores
-          proveedoresOptions = data.proveedores.map(prov => 
-            `<option value="${prov.id}">${prov.nombre} (${prov.especialidad || 'Sin especialidad'})</option>`
-          ).join('');
-        }
-      })
-      .catch(error => console.error('Error al cargar proveedores:', error));
-        
-    // Añadir event listeners para el precio del proveedor
-    document.querySelectorAll('.proveedor-precio').forEach(input => {
-      input.addEventListener('input', function() {
-        actualizarMargenReal(this);
-      });
-    });
-    // Sincronizar todos los editores HTML con sus campos ocultos
-    function setupHtmlEditors() {
-      document.querySelectorAll('.html-editor').forEach(function(editor) {
-        const id = editor.id;
-        const hiddenInputId = id.replace('editor', 'hidden_descripcion');
-        const hiddenInput = document.getElementById(hiddenInputId);
-        
-        // Inicializar con contenido
-        if (hiddenInput && hiddenInput.value) {
-          editor.innerHTML = hiddenInput.value;
-        }
-        
-        // Sincronizar al escribir
-        editor.addEventListener('input', function() {
-          if (hiddenInput) {
-            hiddenInput.value = editor.innerHTML;
-          }
-        });
-        
-        // Aplicar placeholder si está vacío
-        if (!editor.innerHTML.trim()) {
-          editor.innerHTML = '';
-        }
-      });
-    }
     
     // Configurar la barra de herramientas básica para los editores
     function setupEditorToolbar() {
@@ -1061,6 +508,32 @@
             }
           }
         });
+      });
+    }
+    
+    // Sincronizar todos los editores HTML con sus campos ocultos
+    function setupHtmlEditors() {
+      document.querySelectorAll('.html-editor').forEach(function(editor) {
+        const id = editor.id;
+        const hiddenInputId = id.replace('editor', 'hidden_descripcion');
+        const hiddenInput = document.getElementById(hiddenInputId);
+        
+        // Inicializar con contenido
+        if (hiddenInput && hiddenInput.value) {
+          editor.innerHTML = hiddenInput.value;
+        }
+        
+        // Sincronizar al escribir
+        editor.addEventListener('input', function() {
+          if (hiddenInput) {
+            hiddenInput.value = editor.innerHTML;
+          }
+        });
+        
+        // Aplicar placeholder si está vacío
+        if (!editor.innerHTML.trim()) {
+          editor.innerHTML = '';
+        }
       });
     }
     

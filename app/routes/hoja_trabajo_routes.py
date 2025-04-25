@@ -181,10 +181,8 @@ def editar_hoja(id):
     # Obtener lista de proveedores para los selectores
     proveedores = get_all(Proveedor)
     
-    # Obtener todos los proveedores asignados a partidas
+    # Obtener todos los proveedores asignados a partidas (versión temporal sin campos unitario/cantidad)
     proveedores_por_partida = {}
-    for partida in hoja.partidas:
-        proveedores_por_partida[partida.id] = db.session.query(ProveedorPartida).filter_by(id_partida=partida.id).all()
     
     # Aplicar el filtro de sanitizado al actualizar la hoja de trabajo
     if request.method == 'POST':

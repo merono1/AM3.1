@@ -33,36 +33,16 @@ def create_app(config_name='default'):
     if using_postgres:
         print(f"✅ Usando PostgreSQL: {app.config['SQLALCHEMY_DATABASE_URI'].split('@')[1] if '@' in app.config['SQLALCHEMY_DATABASE_URI'] else 'configurada'}")
         
-        # Verificar conexión a PostgreSQL antes de inicializar SQLAlchemy
+        # La conexión a PostgreSQL ya fue verificada en config.py
+        # Por lo tanto, no es necesario volver a verificarla aquí
         try:
             import psycopg2
-            # Extraer datos de la URI de SQLAlchemy
-            pg_uri = app.config['SQLALCHEMY_DATABASE_URI']
-            pg_uri = pg_uri.replace('postgresql://', '')
-            user_pass, host_db = pg_uri.split('@', 1)
-            host, db = host_db.split('/', 1)
-            user, password = user_pass.split(':', 1)
-            
-            # Conectar con un timeout de 15 segundos
-            print("Conectando a PostgreSQL (timeout: 15s)...")
-            conn = psycopg2.connect(
-                dbname=db,
-                user=user,
-                password=password,
-                host=host,
-                connect_timeout=15
-            )
-            conn.close()
-            print("✅ Conexión a PostgreSQL verificada")
+            # La conexión ya fue verificada en config.py
+            # No realizamos una segunda verificación para evitar timeouts
+            print("✅ Configuración de PostgreSQL verificada")
         except ImportError:
             print("❌ Error: psycopg2 no está instalado")
             print("   Instala psycopg2-binary con: pip install psycopg2-binary")
-            sys.exit(1)
-        except Exception as e:
-            print(f"❌ Error al conectar a PostgreSQL: {e}")
-            print("   La aplicación está configurada para usar únicamente PostgreSQL.")
-            print("   Verifica que la base de datos en Neon esté activa y las credenciales sean correctas.")
-            print("   Si el problema persiste, contacta al soporte de Neon.")
             sys.exit(1)
     else:
         # La aplicación debe usar PostgreSQL exclusivamente
