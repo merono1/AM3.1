@@ -7,28 +7,25 @@ from pathlib import Path
 # Cargar variables de entorno desde .env
 load_dotenv()
 
-# Verificar que DATABASE_URL esté configurado
+# Variable para controlar si ya se ejecutó la inicialización
+is_second_run = os.environ.get('FLASK_RUN_FROM_RELOAD') == '1'
+
+# Verificación básica de DATABASE_URL (sin conexiones redundantes)
 if not os.environ.get('DATABASE_URL'):
     print("❌ ERROR: No se ha configurado DATABASE_URL en el archivo .env")
     print("   La aplicación está configurada para usar SOLO PostgreSQL en Neon.")
     print("   Asegúrate de que DATABASE_URL esté correctamente definida en el archivo .env")
     sys.exit(1)
 
-# Verificar que psycopg2 esté instalado
-try:
-    import psycopg2
-except ImportError:
-    print("❌ ERROR: No se ha encontrado el módulo 'psycopg2'")
-    print("   Este módulo es necesario para conectarse a PostgreSQL.")
-    print("   Instálalo con: pip install psycopg2-binary")
-    sys.exit(1)
-
-# Variable para controlar si ya se ejecutó la inicialización
-is_second_run = os.environ.get('FLASK_RUN_FROM_RELOAD') == '1'
-
-if not is_second_run:
-    print("=== Verificación de base de datos ===")
-    print(f"✅ Usando PostgreSQL: {os.environ.get('DATABASE_URL', '').split('@')[1] if '@' in os.environ.get('DATABASE_URL', '') else 'configurada'}")
+# Verificar que psycopg2 esté instalado (sin importar)
+if not is_second_run and 'psycopg2' not in sys.modules:
+    try:
+        __import__('psycopg2')
+    except ImportError:
+        print("❌ ERROR: No se ha encontrado el módulo 'psycopg2'")
+        print("   Este módulo es necesario para conectarse a PostgreSQL.")
+        print("   Instálalo con: pip install psycopg2-binary")
+        sys.exit(1)
 
 # Ahora importamos y creamos la aplicación
 from app import create_app
@@ -125,6 +122,7 @@ def check_db():
         """, db_info=database_info, error=str(e))
 
 if __name__ == '__main__':
+    # Imprimir mensaje de inicio solo una vez
     if not is_second_run:
         print("\n=== Iniciando aplicación AM3.1 ===")
         print(f"Configuración: {os.getenv('FLASK_ENV', 'default')}")
@@ -133,4 +131,8 @@ if __name__ == '__main__':
     # Marcar que está ejecutándose para el reinicio
     os.environ['FLASK_RUN_FROM_RELOAD'] = '1'
     
-    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
+    # Evitar activar el reloader en modo debug cuando se detecta el reinicio
+    # para prevenir mensajes duplicados
+    use_reloader = not is_second_run
+    
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)), use_reloader=use_reloader)

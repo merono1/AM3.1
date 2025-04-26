@@ -205,6 +205,31 @@ def editar_hoja(id):
                 data['fecha_aprobacion'] = datetime.utcnow()
             
             update(HojaTrabajo, id, data)
+            
+            # Solo guardar IDs reales (positivos), no los IDs temporales negativos
+            partida_ids = [int(pid) for pid in request.form.getlist('partida_ids[]') if int(pid) > 0]
+            
+            for partida_id in partida_ids:
+                partida = get_by_id(PartidaHoja, partida_id)
+                
+                if partida:
+                    # Actualizar proveedor principal
+                    id_proveedor = request.form.get(f'proveedor_ids[{partida_id}]')
+                    precio_proveedor = request.form.get(f'proveedor_precios[{partida_id}]')
+                    
+                    if id_proveedor and id_proveedor.strip():
+                        try:
+                            partida.id_proveedor_principal = int(id_proveedor)
+                            if precio_proveedor and precio_proveedor.strip():
+                                partida.precio_proveedor = float(precio_proveedor)
+                            else:
+                                partida.precio_proveedor = 0
+                            db.session.commit()
+                        except Exception as e:
+                            db.session.rollback()
+                            print(f"Error al actualizar proveedor para partida {partida_id}: {str(e)}")
+            
+            db.session.commit()
             flash('Hoja de trabajo actualizada correctamente', 'success')
             return redirect(url_for('hojas_trabajo.editar_hoja', id=id))
         
@@ -234,7 +259,7 @@ def editar_hoja(id):
     if not hoja.tecnico_encargado:
         hoja.tecnico_encargado = request.form.get('tecnico_encargado', '') or ''
     
-    return render_template('hojas_trabajo/editar_hoja_multiprov.html', 
+    return render_template('hojas_trabajo/editar_nueva.html', 
                           hoja=hoja,
                           presupuesto=presupuesto,
                           proyecto=proyecto,

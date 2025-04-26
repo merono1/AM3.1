@@ -1,18 +1,4 @@
-  // Desactivar el botón de "Proveedores Adicionales"
-  document.querySelectorAll('.btn-proveedores-adicionales').forEach(btn => {
-    btn.removeEventListener('click', function() {});
-    btn.addEventListener('click', function(e) {
-      e.preventDefault();
-      const partidaId = this.getAttribute('data-partida-id');
-      if (partidaId) {
-        // Mostrar el panel de proveedores inline
-        const btnProveedores = this.closest('.partida').querySelector('.btn-proveedores');
-        if (btnProveedores) {
-          toggleProveedoresInline(btnProveedores);
-        }
-      }
-    });
-  });<!-- Eliminar este contenido duplicado -->{% extends "layout/base.html" %}
+{% extends "layout/base.html" %}
 
 {% block content %}
 <div class="container-fluid mt-4">
@@ -105,7 +91,7 @@
                    data-partida-index="{{ cap.partidas|length }}">
                 {% for part in partidas_por_capitulo[cap.numero] if cap.numero in partidas_por_capitulo %}
                   {% set part_idx = loop.index0 %}
-                  <div class="partida border p-2 mb-2">
+                  <div class="partida border p-2 mb-2" data-partida-id="{{ part.id }}">
                     <div class="row">
                       <div class="col-12 mb-2">
                         <label class="form-label small-label">Descripción de la partida</label>
@@ -118,8 +104,6 @@
                              title="Descripción de la partida (con formato HTML)">
                           {{ part.descripcion|safe }}
                         </div>
-                    
-
                         <!-- Campo oculto para enviar el HTML -->
                         <input type="hidden" 
                                name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][descripcion]"
@@ -128,10 +112,6 @@
                                required>
                       </div>
                     </div>
-                    
-
-                    
-
                     <div class="row">
                       <div class="col-md-2">
                         <label class="form-label small-label">Unitario</label>
@@ -197,8 +177,9 @@
                     <div class="row mt-2">
                       <div class="col-md-6">
                         <label class="form-label small-label">Proveedor principal</label>
+                        <input type="hidden" name="partida_ids[]" value="{{ part.id }}">
                         <select class="form-select proveedor-select"
-                                name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][id_proveedor]"
+                                name="proveedor_ids[{{ part.id }}]"
                                 id="proveedor_{{ chap_idx }}_{{ part_idx }}"
                                 data-partida-id="{{ part.id }}"
                                 data-proveedor-id="{{ part.id_proveedor_principal }}"
@@ -211,7 +192,7 @@
                         <label class="form-label small-label">Precio proveedor (€)</label>
                         <div class="input-group">
                           <input type="number" step="any" class="form-control proveedor-precio"
-                                name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][precio_proveedor]"
+                                name="proveedor_precios[{{ part.id }}]"
                                 id="precio_proveedor_{{ chap_idx }}_{{ part_idx }}"
                                 value="{{ part.precio_proveedor or 0 }}"
                                 title="Precio del proveedor principal">
@@ -227,13 +208,9 @@
                       </div>
                       <div class="col-12 mt-2 d-flex justify-content-between">
                         <div>
-                          <button type="button" class="btn btn-sm btn-info btn-proveedores" title="Mostrar/ocultar proveedores"
+                          <button type="button" class="btn btn-sm btn-info btn-proveedores" title="Gestionar proveedores"
                                   data-partida-id="{{ part.id }}">
                             Proveedores
-                          </button>
-                          <button type="button" class="btn btn-sm btn-secondary btn-proveedores-adicionales" title="Gestionar proveedores adicionales"
-                                  data-partida-id="{{ part.id }}">
-                            Proveedores Adicionales
                           </button>
                         </div>
                         <button type="button" class="btn btn-sm btn-danger deletePartidaBtn" title="Borrar esta partida">
@@ -376,8 +353,12 @@
     const partidasContainer = capDiv.querySelector('.partidasContainer');
     let partIndex = parseInt(partidasContainer.getAttribute('data-partida-index')) || 0;
 
+    // Generar un ID temporal negativo para las nuevas partidas
+    const tempPartidaId = -Math.floor(Math.random() * 100000);
+
     const partDiv = document.createElement('div');
     partDiv.className = 'partida border p-2 mb-2';
+    partDiv.setAttribute('data-partida-id', tempPartidaId); // ID temporal negativo
     partDiv.innerHTML = `
       <div class="row">
         <div class="col-12 mb-2">
@@ -454,10 +435,11 @@
       <div class="row mt-2">
         <div class="col-md-6">
           <label class="form-label small-label">Proveedor principal</label>
+          <input type="hidden" name="partida_ids[]" value="${tempPartidaId}">
           <select class="form-select proveedor-select"
-                  name="capitulos[${capIndex}][partidas][${partIndex}][id_proveedor]"
+                  name="proveedor_ids[${tempPartidaId}]"
                   id="proveedor_${capIndex}_${partIndex}"
-                  data-partida-id="0"
+                  data-partida-id="${tempPartidaId}"
                   title="Seleccione el proveedor principal" disabled>
             <option value="">Seleccione proveedor</option>
             <!-- Las opciones se cargarán por JavaScript -->
@@ -467,7 +449,7 @@
           <label class="form-label small-label">Precio proveedor (€)</label>
           <div class="input-group">
             <input type="number" step="any" class="form-control proveedor-precio"
-                  name="capitulos[${capIndex}][partidas][${partIndex}][precio_proveedor]"
+                  name="proveedor_precios[${tempPartidaId}]"
                   id="precio_proveedor_${capIndex}_${partIndex}"
                   value="0"
                   title="Precio del proveedor principal" disabled>
@@ -484,12 +466,8 @@
         <div class="col-12 mt-2 d-flex justify-content-between">
           <div>
             <button type="button" class="btn btn-sm btn-info btn-proveedores" title="Mostrar/ocultar proveedores"
-                    data-partida-id="0" disabled>
+                    data-partida-id="${tempPartidaId}" disabled>
               Proveedores
-            </button>
-            <button type="button" class="btn btn-sm btn-secondary btn-proveedores-adicionales" title="Gestionar proveedores" 
-                    data-partida-id="0" disabled>
-              Proveedores Adicionales
             </button>
             <small class="text-muted">(Guardar primero para activar)</small>
           </div>
@@ -607,96 +585,6 @@
   }
 
   document.addEventListener("DOMContentLoaded", function(){
-    // Variable global para almacenar las opciones de proveedores
-    let proveedoresOptions = '';
-    
-    // Cargar los proveedores desde la API
-    fetch('/api/proveedores/listar')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Crear las opciones de proveedores
-                proveedoresOptions = data.proveedores.map(prov => 
-                    `<option value="${prov.id}">${prov.nombre} (${prov.especialidad || 'Sin especialidad'})</option>`
-                ).join('');
-                
-                // Agregar opciones a todos los selectores de proveedores
-                document.querySelectorAll('.proveedor-select').forEach(select => {
-                    // Obtener el valor del proveedor del atributo data o del valor actual
-                    const proveedorId = select.getAttribute('data-proveedor-id') || select.value;
-                    
-                    // Agregar las opciones al selector
-                    select.innerHTML = `<option value="">Seleccione proveedor</option>${proveedoresOptions}`;
-                    
-                    // Establecer el valor seleccionado si existe
-                    if (proveedorId) {
-                        select.value = proveedorId;
-                    }
-                    
-                    // Habilitar el selector
-                    select.disabled = false;
-                });
-            }
-        })
-        .catch(error => console.error('Error al cargar proveedores:', error));
-        
-    // Función para cargar proveedores en una nueva partida
-    window.cargarProveedoresEnSelector = function(select) {
-        if (proveedoresOptions) {
-            select.innerHTML = `<option value="">Seleccione proveedor</option>${proveedoresOptions}`;
-            select.disabled = false;
-        }
-    };
-        
-    // Función para actualizar el cálculo de margen real
-    function actualizarMargenReal(input) {
-        const partida = input.closest('.partida');
-        if (!partida) return;
-        
-        const finalInput = partida.querySelector('input[name*="[final]"]');
-        const precioProveedorInput = partida.querySelector('.proveedor-precio');
-        const margenRealInput = partida.querySelector('.margen-real-display');
-        
-        if (!finalInput || !precioProveedorInput || !margenRealInput) return;
-        
-        const final = parseFloat(finalInput.value) || 0;
-        const precioProveedor = parseFloat(precioProveedorInput.value) || 0;
-        
-        if (precioProveedor > 0) {
-            const margenReal = ((final / precioProveedor) - 1) * 100;
-            margenRealInput.value = margenReal.toFixed(2);
-        } else {
-            margenRealInput.value = "0.00";
-        }
-    }
-    
-    // Añadir event listeners para el precio del proveedor
-    document.querySelectorAll('.proveedor-precio').forEach(input => {
-        input.addEventListener('input', function() {
-            actualizarMargenReal(this);
-        });
-        
-        // Calcular el margen real inicial
-        actualizarMargenReal(input);
-        
-        // Habilitar el input
-        input.disabled = false;
-    });
-    
-    // Añadir event listeners para los selectores de proveedores
-    document.querySelectorAll('.proveedor-select').forEach(select => {
-        select.addEventListener('change', function() {
-            // Opcional: Aquí podríamos cargar el precio del proveedor mediante una llamada API
-            // Por ahora solo habilitamos el input de precio
-            const partida = select.closest('.partida');
-            if (partida) {
-                const precioInput = partida.querySelector('.proveedor-precio');
-                if (precioInput) {
-                    precioInput.disabled = false;
-                }
-            }
-            // Aquí no es necesario hacer nada más
-  });
     // Sincronizar todos los editores HTML con sus campos ocultos
     function setupHtmlEditors() {
       document.querySelectorAll('.html-editor').forEach(function(editor) {
@@ -818,8 +706,8 @@
 <!-- Agregar FontAwesome para los iconos de la barra de herramientas -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
-<!-- Scripts para manejar proveedores inline -->
-<script src="{{ url_for('static', filename='js/proveedores_inline.js') }}"></script>
+<!-- Script unificado para manejar proveedores -->
+<script src="{{ url_for('static', filename='js/proveedores_unificado.js') }}"></script>
 
 <style>
   /* Estilos para el editor HTML */

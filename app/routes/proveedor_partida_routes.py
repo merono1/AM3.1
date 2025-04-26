@@ -85,6 +85,10 @@ def asignar_proveedor():
             
         if not proveedor:
             return jsonify({'success': False, 'error': 'Proveedor no encontrado'}), 404
+        
+        # Si el ID de partida es negativo (temporal), no procesar
+        if int(id_partida) < 0:
+            return jsonify({'success': False, 'error': 'Partida no guardada. Guarde primero la hoja.'}), 400
             
         # Verificar si ya existe esta asignación
         proveedor_existente = ProveedorPartida.query.filter_by(

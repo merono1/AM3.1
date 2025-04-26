@@ -4,6 +4,10 @@ from pathlib import Path
 import sys
 import time
 
+# Control de duplicación de mensajes
+CONNECTION_VERIFIED = False
+DB_INFO_PRINTED = False
+
 # Obtener el directorio base del proyecto
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -18,22 +22,29 @@ class Config:
     
     # Determinar URI de base de datos
     if DATABASE_URL:
-        # Intentar usar PostgreSQL
+        # Configurar para usar PostgreSQL
         try:
             # Importar psycopg2 para verificar que está instalado
             import psycopg2
             
-            # Verificar conexión si estamos en modo verbose
-            if os.environ.get('CHECK_DB_CONNECTION', 'false').lower() == 'true':
+            # Verificar conexión SOLO si estamos en modo verbose y es la primera vez
+            global CONNECTION_VERIFIED
+            if os.environ.get('CHECK_DB_CONNECTION', 'false').lower() == 'true' and not CONNECTION_VERIFIED:
                 print(f"Verificando conexión a PostgreSQL...")
                 start_time = time.time()
                 conn = psycopg2.connect(DATABASE_URL, connect_timeout=5)
                 elapsed = time.time() - start_time
                 print(f"✅ Conexión exitosa a PostgreSQL ({elapsed:.2f}s)")
                 conn.close()
+                # Marcar que ya verificamos la conexión
+                CONNECTION_VERIFIED = True
             
             SQLALCHEMY_DATABASE_URI = DATABASE_URL
-            print(f"✅ Usando PostgreSQL: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else 'configurada'}")
+            # Solo imprimir mensaje si no se ha verificado antes
+            global DB_INFO_PRINTED
+            if not DB_INFO_PRINTED:
+                print(f"✅ Usando PostgreSQL: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else 'configurada'}")
+                DB_INFO_PRINTED = True
         except Exception as e:
             # Si fallback está habilitado, usar SQLite
             if ENABLE_SQLITE_FALLBACK:

@@ -31,15 +31,11 @@ def create_app(config_name='default'):
     using_postgres = 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI']
     
     if using_postgres:
-        print(f"✅ Usando PostgreSQL: {app.config['SQLALCHEMY_DATABASE_URI'].split('@')[1] if '@' in app.config['SQLALCHEMY_DATABASE_URI'] else 'configurada'}")
-        
-        # La conexión a PostgreSQL ya fue verificada en config.py
-        # Por lo tanto, no es necesario volver a verificarla aquí
+        # No necesita imprimir mensaje - ya se hace en config.py
+        # Importar psycopg2 sin verificación adicional
         try:
             import psycopg2
-            # La conexión ya fue verificada en config.py
-            # No realizamos una segunda verificación para evitar timeouts
-            print("✅ Configuración de PostgreSQL verificada")
+            # No realizar mensajes ni verificaciones redundantes
         except ImportError:
             print("❌ Error: psycopg2 no está instalado")
             print("   Instala psycopg2-binary con: pip install psycopg2-binary")
@@ -98,6 +94,10 @@ def create_app(config_name='default'):
     # Registrar blueprints
     from app.routes import register_blueprints
     register_blueprints(app)
+    
+    # Aplicar optimizaciones de base de datos
+    from app.services.db_service import setup_db_optimizations
+    setup_db_optimizations(app)
     
     # Página de inicio
     @app.route('/')
