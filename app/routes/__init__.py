@@ -10,7 +10,12 @@ def register_blueprints(app):
     from app.routes.partida_routes import partidas_bp
     from app.routes.proveedor_partida_routes import proveedor_partida_bp, api_proveedor_partida_bp
     from app.routes.proveedor_api_routes import proveedor_api_bp
+    from app.routes.db_manager_routes import db_manager
     
+    # Registro del nuevo blueprint para gestión de base de datos
+    app.register_blueprint(db_manager)
+    
+    # Blueprints existentes
     app.register_blueprint(clientes_bp)
     app.register_blueprint(proyectos_bp)
     app.register_blueprint(presupuestos_bp)

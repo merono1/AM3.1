@@ -1,0 +1,1057 @@
+{% extends "layout/base.html" %}
+
+{% block title %}Gestión de Base de Datos{% endblock %}
+
+{% block meta %}
+<meta http-equiv="refresh" content="120">
+{% endblock %}
+
+{% block head %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+{% endblock %}
+
+{% block styles %}
+<style>
+  .db-options-card {
+    transition: all 0.3s ease;
+  }
+  .db-options-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  }
+  .status-indicator {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+  }
+  .status-active {
+    background-color: #28a745;
+    box-shadow: 0 0 8px #28a745;
+  }
+  .status-inactive {
+    background-color: #dc3545;
+    box-shadow: 0 0 8px #dc3545;
+  }
+  .status-local {
+    background-color: #28a745;
+    box-shadow: 0 0 8px #28a745;
+  }
+  .status-remote {
+    background-color: #0d6efd;
+    box-shadow: 0 0 8px #0d6efd;
+  }
+  .db-status-banner {
+    padding: 8px 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    color: white;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .db-status-local {
+    background-color: #28a745;
+  }
+  .db-status-remote {
+    background-color: #0d6efd;
+  }
+  .restart-btn {
+    margin-left: 10px;
+  }
+  .db-info-table {
+    width: 100%;
+  }
+  .db-info-table td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+  }
+  .db-info-table tr:last-child td {
+    border-bottom: none;
+  }
+  .db-info-label {
+    font-weight: bold;
+    width: 40%;
+  }
+  .loading-spinner {
+    display: none;
+    margin-left: 10px;
+  }
+  .btn-action:disabled {
+    cursor: not-allowed;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1 class="display-5 mb-0">Gestión de Base de Datos</h1>
+      <p class="text-muted">Administra la conexión a la base de datos y sincroniza datos entre local y remota.</p>
+    </div>
+  </div>
+
+  <!-- Tarjeta de estado actual -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <!-- Banner de estado con indicador claro -->
+      {% if 'SQLite' in db_info.type %}
+        <div class="db-status-banner db-status-local" id="db-status-banner">
+          <div>
+            <i class="fas fa-database me-2"></i>
+            <strong>MODO LOCAL:</strong> Actualmente usando la base de datos SQLite local
+          </div>
+          <div>
+            <button type="button" class="btn btn-sm btn-light verify-db-btn" title="Verificar estado actual">
+              <i class="fas fa-check"></i> Verificar
+            </button>
+          </div>
+        </div>
+      {% else %}
+        <div class="db-status-banner db-status-remote" id="db-status-banner">
+          <div>
+            <i class="fas fa-cloud me-2"></i>
+            <strong>MODO REMOTO:</strong> Actualmente usando la base de datos PostgreSQL en Neon
+          </div>
+          <div>
+            <button type="button" class="btn btn-sm btn-light verify-db-btn" title="Verificar estado actual">
+              <i class="fas fa-check"></i> Verificar
+            </button>
+          </div>
+        </div>
+      {% endif %}
+      
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">
+            <i class="fas fa-info-circle me-2"></i>Estado Actual
+          </h5>
+          <div>
+            <span id="auto-refresh-badge" class="badge bg-light text-dark" title="Actualización automática cada 30s">
+              Auto <i class="fas fa-sync-alt"></i>
+            </span>
+            <span id="last-refresh" class="badge bg-light text-dark ms-2">
+              Última actualización: {{ db_info.timestamp if db_info.timestamp else 'ahora' }}
+            </span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            {% if 'SQLite' in db_info.type %}
+              <span class="status-indicator status-local" id="db-status-indicator"></span>
+              <h4 class="mb-0" id="db-type">Base de datos local (SQLite)</h4>
+            {% else %}
+              <span class="status-indicator status-remote" id="db-status-indicator"></span>
+              <h4 class="mb-0" id="db-type">Base de datos remota (PostgreSQL)</h4>
+            {% endif %}
+          </div>
+
+          <table class="db-info-table">
+            {% if 'SQLite' in db_info.type %}
+              <tr>
+                <td class="db-info-label">Ruta:</td>
+                <td id="db-path">{{ db_info.path }}</td>
+              </tr>
+              {% if db_info.exists %}
+                <tr>
+                  <td class="db-info-label">Tamaño:</td>
+                  <td id="db-size">{{ db_info.size }}</td>
+                </tr>
+                <tr>
+                  <td class="db-info-label">Última modificación:</td>
+                  <td id="db-modified">{{ db_info.last_modified }}</td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td class="db-info-label">Estado:</td>
+                  <td class="text-danger" id="db-exists">Base de datos local no encontrada</td>
+                </tr>
+              {% endif %}
+            {% else %}
+              <tr>
+                <td class="db-info-label">Conexión:</td>
+                <td id="db-connection">{{ db_info.connection }}</td>
+              </tr>
+              <tr>
+                <td class="db-info-label">Estado:</td>
+                <td id="db-state">
+                  <span class="badge bg-success">Activo</span>
+                </td>
+              </tr>
+            {% endif %}
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tarjetas de opciones -->
+  <div class="row g-4">
+    <!-- Opción 1: Descargar de Neon -->
+    <div class="col-md-6">
+      <div class="card db-options-card h-100 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="bg-primary bg-opacity-10 p-3 rounded me-3">
+              <i class="fas fa-cloud-download-alt fa-2x text-primary"></i>
+            </div>
+            <h5 class="card-title mb-0">Descargar Base de Datos</h5>
+          </div>
+          <p class="card-text">Descarga la base de datos desde el servidor PostgreSQL (Neon) a tu equipo local (SQLite).</p>
+          <ul class="text-muted">
+            <li>Crea automáticamente una copia de seguridad de tu BD local actual</li>
+            <li>Transfiere todos los datos y estructura de la BD remota</li>
+            <li>Permite trabajar sin conexión a internet</li>
+          </ul>
+        </div>
+        <div class="card-footer bg-transparent border-0 pb-3">
+          <form action="{{ url_for('db_manager.download_db') }}" method="post" id="download-form" onsubmit="return descargarBaseDatos()">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary w-100 btn-action" id="btn-download">
+              <i class="fas fa-cloud-download-alt me-2"></i>Descargar de Neon
+              <span class="spinner-border spinner-border-sm loading-spinner" id="download-spinner"></span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Opción 2: Subir a Neon -->
+    <div class="col-md-6">
+      <div class="card db-options-card h-100 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="bg-success bg-opacity-10 p-3 rounded me-3">
+              <i class="fas fa-cloud-upload-alt fa-2x text-success"></i>
+            </div>
+            <h5 class="card-title mb-0">Sincronizar con Neon</h5>
+          </div>
+          <p class="card-text">Sube tu base de datos local a PostgreSQL (Neon), sincronizando todos los cambios realizados.</p>
+          <ul class="text-muted">
+            <li>Actualiza la base de datos remota con tus cambios locales</li>
+            <li>Permite compartir tu trabajo con otros usuarios</li>
+            <li>Mantiene respaldos en la nube</li>
+          </ul>
+        </div>
+        <div class="card-footer bg-transparent border-0 pb-3">
+          <form action="{{ url_for('db_manager.upload_db') }}" method="post" id="upload-form" onsubmit="return subirBaseDatos()">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-success w-100 btn-action" id="btn-upload" {% if not db_info.exists and 'SQLite' in db_info.type %}disabled{% endif %}>
+              <i class="fas fa-cloud-upload-alt me-2"></i>Subir a Neon
+              <span class="spinner-border spinner-border-sm loading-spinner" id="upload-spinner"></span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Opción 3: Cambiar a Local -->
+    <div class="col-md-6">
+      <div class="card db-options-card h-100 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="bg-warning bg-opacity-10 p-3 rounded me-3">
+              <i class="fas fa-database fa-2x text-warning"></i>
+            </div>
+            <h5 class="card-title mb-0">Cambiar a Base de Datos Local</h5>
+          </div>
+          <p class="card-text">Configura la aplicación para utilizar la base de datos SQLite local en este equipo.</p>
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>Se requiere reiniciar la aplicación para aplicar el cambio.
+          </div>
+        </div>
+        <div class="card-footer bg-transparent border-0 pb-3">
+          <form action="{{ url_for('db_manager.switch_to_local') }}" method="post" id="switch-local-form" onsubmit="return cambiarALocal()">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-warning w-100 btn-action" id="btn-switch-local" {% if 'SQLite' in db_info.type %}disabled{% endif %}>
+                <i class="fas fa-database me-2"></i>Usar Base de Datos Local
+                <span class="spinner-border spinner-border-sm loading-spinner" id="switch-local-spinner"></span>
+              </button>
+              {% if 'SQLite' in db_info.type %}
+              <button type="button" class="btn btn-success w-100" id="btn-restart-after-local" onclick="reiniciarAplicacion()">
+                <i class="fas fa-sync-alt me-2"></i>Reiniciar aplicación ahora
+                <span class="spinner-border spinner-border-sm loading-spinner" id="restart-local-spinner"></span>
+              </button>
+              {% endif %}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Opción 4: Cambiar a Neon -->
+    <div class="col-md-6">
+      <div class="card db-options-card h-100 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="bg-info bg-opacity-10 p-3 rounded me-3">
+              <i class="fas fa-cloud fa-2x text-info"></i>
+            </div>
+            <h5 class="card-title mb-0">Cambiar a Base de Datos Neon</h5>
+          </div>
+          <p class="card-text">Configura la aplicación para utilizar la base de datos PostgreSQL (Neon) en la nube.</p>
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>Se requiere reiniciar la aplicación para aplicar el cambio.
+          </div>
+        </div>
+        <div class="card-footer bg-transparent border-0 pb-3">
+          <form action="{{ url_for('db_manager.switch_to_postgres') }}" method="post" id="switch-postgres-form" onsubmit="return cambiarANeon()">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-info text-white w-100 btn-action" id="btn-switch-postgres" {% if not 'SQLite' in db_info.type %}disabled{% endif %}>
+                <i class="fas fa-cloud me-2"></i>Usar Base de Datos Neon
+                <span class="spinner-border spinner-border-sm loading-spinner" id="switch-postgres-spinner"></span>
+              </button>
+              {% if not 'SQLite' in db_info.type %}
+              <button type="button" class="btn btn-success w-100" id="btn-restart-after-remote" onclick="reiniciarAplicacion()">
+                <i class="fas fa-sync-alt me-2"></i>Reiniciar aplicación ahora
+                <span class="spinner-border spinner-border-sm loading-spinner" id="restart-remote-spinner"></span>
+              </button>
+              {% endif %}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Ocultar todos los spinners al inicio
+    document.querySelectorAll('.loading-spinner').forEach(function(spinner) {
+      spinner.style.display = 'none';
+    });
+
+    // Manejador para el botón de verificación
+    document.querySelectorAll('.verify-db-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        verificarBaseDatos();
+      });
+    });
+    
+    // Obtener token CSRF para peticiones AJAX
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    // Funciones de utilidad
+    // Ocultar spinners cuando se completan operaciones
+    window.hideSpinner = function(buttonId) {
+      const button = document.getElementById(buttonId);
+      if (button) {
+        button.disabled = false;
+        const spinner = button.querySelector('.loading-spinner');
+        if (spinner) spinner.style.display = 'none';
+      }
+    };
+    
+    // Mostrar mensajes temporales
+    window.showTempMessage = function(message, type = 'success') {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+      alertDiv.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+      `;
+      document.querySelector('.container').prepend(alertDiv);
+      
+      // Auto-eliminar después de 5 segundos
+      setTimeout(() => {
+        if (alertDiv.parentNode) {
+          alertDiv.parentNode.removeChild(alertDiv);
+        }
+      }, 5000);
+    };
+    
+    // Función para descargar la base de datos
+    window.descargarBaseDatos = function() {
+    const btnDownload = document.getElementById('btn-download');
+    const spinner = btnDownload.querySelector('.loading-spinner');
+    
+    // Mostrar spinner y deshabilitar botón
+    btnDownload.disabled = true;
+    if (spinner) spinner.style.display = 'inline-block';
+    
+    // Crear FormData para la petición
+    const formData = new FormData();
+    // Agregar el token CSRF (desde el input hidden)
+    const csrfElement = document.querySelector('input[name="csrf_token"]');
+    if (csrfElement) {
+        formData.append('csrf_token', csrfElement.value);
+    } else {
+        formData.append('csrf_token', csrfToken); // Fallback al valor original
+    }
+    
+    // Usar fetch para petición AJAX con cabeceras más explícitas
+    fetch('{{ url_for("db_manager.download_db") }}', {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': csrfToken  // Añadir también como cabecera
+        },
+        body: formData,
+        credentials: 'same-origin'
+      })
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error('Error: ' + response.status + ' ' + response.statusText);
+        }
+      })
+      .then(data => {
+        // Ocultar spinner explícitamente
+        hideSpinner('btn-download');
+        
+        // Mostrar mensaje de éxito
+        showTempMessage(data.message || "Base de datos descargada correctamente.");
+        
+        // Actualizar página después de 2 segundos
+        setTimeout(() => window.location.reload(), 2000);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        
+        // Ocultar spinner explícitamente
+        hideSpinner('btn-download');
+        
+        // Mostrar mensaje de error
+        showTempMessage("Error al descargar la base de datos: " + error.message, "danger");
+      });
+      
+      // Prevenir el envío normal del formulario
+      return false;
+    };
+    
+    // Función para subir la base de datos
+    window.subirBaseDatos = function() {
+    const btnUpload = document.getElementById('btn-upload');
+    const spinner = btnUpload.querySelector('.loading-spinner');
+    
+    // Mostrar spinner y deshabilitar botón
+    btnUpload.disabled = true;
+    if (spinner) spinner.style.display = 'inline-block';
+      
+      // Crear FormData para la petición
+      const formData = new FormData();
+      // Agregar el token CSRF (desde el input hidden)
+      const csrfElement = document.querySelector('input[name="csrf_token"]');
+      if (csrfElement) {
+          formData.append('csrf_token', csrfElement.value);
+      } else {
+          formData.append('csrf_token', csrfToken); // Fallback al valor original
+      }
+      
+      // Usar fetch para petición AJAX con cabeceras más explícitas
+      fetch('{{ url_for("db_manager.upload_db") }}', {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': csrfToken  // Añadir también como cabecera
+        },
+        body: formData,
+        credentials: 'same-origin'
+      })
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error('Error: ' + response.status + ' ' + response.statusText);
+        }
+      })
+      .then(data => {
+        // Ocultar spinner explícitamente
+        hideSpinner('btn-upload');
+        
+        // Mostrar mensaje de éxito
+        showTempMessage(data.message || "Base de datos subida correctamente.");
+        
+        // Actualizar página después de 2 segundos
+        setTimeout(() => window.location.reload(), 2000);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        
+        // Ocultar spinner explícitamente
+        hideSpinner('btn-upload');
+        
+        // Mostrar mensaje de error
+        showTempMessage("Error al subir la base de datos: " + error.message, "danger");
+      });
+      
+      // Prevenir el envío normal del formulario
+      return false;
+    };
+    
+    // Función para cambiar a base de datos local
+    window.cambiarALocal = function() {
+    const btnLocal = document.getElementById('btn-switch-local');
+    const spinner = btnLocal.querySelector('.loading-spinner');
+    
+    // Mostrar spinner y deshabilitar botón
+    btnLocal.disabled = true;
+    if (spinner) spinner.style.display = 'inline-block';
+      
+      // Crear FormData para la petición
+      const formData = new FormData();
+      // Agregar el token CSRF (desde el input hidden)
+      const csrfElement = document.querySelector('input[name="csrf_token"]');
+      if (csrfElement) {
+          formData.append('csrf_token', csrfElement.value);
+      } else {
+          formData.append('csrf_token', csrfToken); // Fallback al valor original
+      }
+      
+      // Usar fetch para petición AJAX con cabeceras más explícitas
+      fetch('{{ url_for("db_manager.switch_to_local") }}', {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': csrfToken  // Añadir también como cabecera
+        },
+        body: formData,
+        credentials: 'same-origin'
+      })
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error('Error: ' + response.status + ' ' + response.statusText);
+        }
+      })
+      .then(data => {
+        // Ocultar spinner explícitamente
+        hideSpinner('btn-switch-local');
+        
+        // Mostrar mensaje de éxito
+        showTempMessage(data.message || "Configuración cambiada a base de datos local. Reinicia la aplicación para aplicar los cambios.");
+        
+        // Mostrar botón de reinicio si está oculto
+        const reinicioBtn = document.getElementById('btn-restart-after-local');
+        if (reinicioBtn) reinicioBtn.style.display = 'block';
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        
+        // Ocultar spinner explícitamente
+        hideSpinner('btn-switch-local');
+        
+        // Mostrar mensaje de error
+        showTempMessage("Error al cambiar a base de datos local: " + error.message, "danger");
+      });
+      
+      // Prevenir el envío normal del formulario
+      return false;
+    };
+    
+    // Función para cambiar a base de datos Neon
+    window.cambiarANeon = function() {
+    const btnNeon = document.getElementById('btn-switch-postgres');
+    const spinner = btnNeon.querySelector('.loading-spinner');
+    
+    // Mostrar spinner y deshabilitar botón
+    btnNeon.disabled = true;
+    if (spinner) spinner.style.display = 'inline-block';
+      
+      // Crear FormData para la petición
+      const formData = new FormData();
+      // Agregar el token CSRF (desde el input hidden)
+      const csrfElement = document.querySelector('input[name="csrf_token"]');
+      if (csrfElement) {
+          formData.append('csrf_token', csrfElement.value);
+      } else {
+          formData.append('csrf_token', csrfToken); // Fallback al valor original
+      }
+      
+      // Usar fetch para petición AJAX con cabeceras más explícitas
+      fetch('{{ url_for("db_manager.switch_to_postgres") }}', {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': csrfToken  // Añadir también como cabecera
+        },
+        body: formData,
+        credentials: 'same-origin'
+      })
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error('Error: ' + response.status + ' ' + response.statusText);
+        }
+      })
+      .then(data => {
+        // Ocultar spinner explícitamente
+        hideSpinner('btn-switch-postgres');
+        
+        // Mostrar mensaje de éxito
+        showTempMessage(data.message || "Configuración cambiada a base de datos PostgreSQL. Reinicia la aplicación para aplicar los cambios.");
+        
+        // Mostrar botón de reinicio si está oculto
+        const reinicioBtn = document.getElementById('btn-restart-after-remote');
+        if (reinicioBtn) reinicioBtn.style.display = 'block';
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        
+        // Ocultar spinner explícitamente
+        hideSpinner('btn-switch-postgres');
+        
+        // Mostrar mensaje de error
+        showTempMessage("Error al cambiar a base de datos PostgreSQL: " + error.message, "danger");
+      });
+      
+      // Prevenir el envío normal del formulario
+      return false;
+    };
+    
+    // Actualización automática de estado cada 30 segundos
+    let autoRefreshInterval = setInterval(updateDBStatus, 30000);
+    
+    // Función para actualizar estado
+    function updateDBStatus() {
+      fetch('{{ url_for("db_manager.db_status") }}')
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            const dbInfo = data.db_info;
+            const timestamp = new Date().toLocaleTimeString();
+            
+            // Actualizar el banner de estado
+            const statusBanner = document.getElementById('db-status-banner');
+            if (dbInfo.type.includes('SQLite')) {
+              statusBanner.classList.remove('db-status-remote');
+              statusBanner.classList.add('db-status-local');
+              statusBanner.innerHTML = `
+                <div>
+                  <i class="fas fa-database me-2"></i>
+                  <strong>MODO LOCAL:</strong> Actualmente usando la base de datos SQLite local
+                </div>
+                <div>
+                  <button type="button" class="btn btn-sm btn-light verify-db-btn" title="Verificar estado actual" onclick="verificarBaseDatos()">
+                    <i class="fas fa-check"></i> Verificar
+                  </button>
+                </div>
+              `;
+              
+              // Actualizar la clase del indicador de estado
+              document.getElementById('db-status-indicator').className = 'status-indicator status-local';
+            } else {
+              statusBanner.classList.remove('db-status-local');
+              statusBanner.classList.add('db-status-remote');
+              statusBanner.innerHTML = `
+                <div>
+                  <i class="fas fa-cloud me-2"></i>
+                  <strong>MODO REMOTO:</strong> Actualmente usando la base de datos PostgreSQL en Neon
+                </div>
+                <div>
+                  <button type="button" class="btn btn-sm btn-light verify-db-btn" title="Verificar estado actual" onclick="verificarBaseDatos()">
+                    <i class="fas fa-check"></i> Verificar
+                  </button>
+                </div>
+              `;
+              
+              // Actualizar la clase del indicador de estado
+              document.getElementById('db-status-indicator').className = 'status-indicator status-remote';
+            }
+            
+            // Actualizar indicador de tipo de BD
+            document.getElementById('db-type').textContent = 
+              dbInfo.type.includes('SQLite') ? 'Base de datos local (SQLite)' : 'Base de datos remota (PostgreSQL)';
+            
+            // Actualizar botones según tipo de BD
+            document.getElementById('btn-switch-local').disabled = dbInfo.type.includes('SQLite');
+            document.getElementById('btn-switch-postgres').disabled = !dbInfo.type.includes('SQLite');
+            
+            // Mostrar u ocultar botones de reinicio
+            if (document.getElementById('btn-restart-after-local')) {
+              document.getElementById('btn-restart-after-local').style.display = 
+                dbInfo.type.includes('SQLite') ? 'block' : 'none';
+            }
+            
+            if (document.getElementById('btn-restart-after-remote')) {
+              document.getElementById('btn-restart-after-remote').style.display = 
+                !dbInfo.type.includes('SQLite') ? 'block' : 'none';
+            }
+            
+            // Actualizar datos específicos según tipo
+            if (dbInfo.type.includes('SQLite')) {
+              // Si es SQLite, actualizar información específica
+              if (document.getElementById('db-path')) {
+                document.getElementById('db-path').textContent = dbInfo.path;
+              }
+              
+              // Si existe, actualizar tamaño y fecha
+              if (dbInfo.exists) {
+                if (document.getElementById('db-size')) {
+                  document.getElementById('db-size').textContent = dbInfo.size;
+                }
+                if (document.getElementById('db-modified')) {
+                  document.getElementById('db-modified').textContent = dbInfo.last_modified;
+                }
+                
+                // Habilitar botón de subida
+                document.getElementById('btn-upload').disabled = false;
+              } else {
+                // Deshabilitar botón de subida si no existe BD local
+                document.getElementById('btn-upload').disabled = true;
+              }
+            } else {
+              // Si es PostgreSQL, actualizar información de conexión
+              if (document.getElementById('db-connection')) {
+                document.getElementById('db-connection').textContent = dbInfo.connection;
+              }
+            }
+            
+            // Actualizar badge de última actualización
+            const lastRefreshBadge = document.getElementById('last-refresh');
+            if (lastRefreshBadge) {
+              lastRefreshBadge.textContent = `Última actualización: ${timestamp}`;
+            }
+            
+            // Hacer parpadear el indicador de actualización
+            const badge = document.getElementById('auto-refresh-badge');
+            badge.classList.add('bg-warning', 'text-dark');
+            setTimeout(() => {
+              badge.classList.remove('bg-warning', 'text-dark');
+              badge.classList.add('bg-light', 'text-dark');
+            }, 1000);
+          }
+        })
+        .catch(error => console.error('Error al actualizar estado:', error));
+    }
+    
+    // Función para verificar la base de datos en tiempo real
+    window.verificarBaseDatos = function() {
+      // Mostrar spinner en el botón de verificación
+      document.querySelectorAll('.verify-db-btn').forEach(btn => {
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+        btn.disabled = true;
+      });
+      
+      // Hacer la consulta de verificación
+      try {
+        fetch('{{ url_for("db_manager.verify_db") }}')
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`Error HTTP: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            if (data.success) {
+              // Crear un modal para mostrar el resultado detallado
+              const modalHtml = `
+                <div class="modal fade" id="dbVerificationModal" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header ${ data.verification && data.verification.matches_config ? 'bg-success text-white' : 'bg-warning' }">
+                        <h5 class="modal-title">
+                          ${ data.verification && data.verification.matches_config ? 
+                            '<i class="fas fa-check-circle me-2"></i>Verificación exitosa' : 
+                            '<i class="fas fa-exclamation-triangle me-2"></i>Discrepancia detectada' }
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                      </div>
+                      <div class="modal-body">
+                        <div class="alert ${ data.verification && data.verification.matches_config ? 'alert-success' : 'alert-warning' }">
+                          <strong>Tipo de base de datos verificado:</strong> ${data.verification ? data.verification.verified_db_type : 'No disponible'}
+                        </div>
+                        
+                        <h6>Detalles de la verificación:</h6>
+                        <ul class="list-group mb-3">
+                          <li class="list-group-item d-flex justify-content-between">
+                            <span>Versión:</span>
+                            <strong>${data.verification ? data.verification.version : 'No disponible'}</strong>
+                          </li>
+                          <li class="list-group-item d-flex justify-content-between">
+                            <span>Número de tablas:</span>
+                            <strong>${data.verification ? data.verification.tables_count : 'No disponible'}</strong>
+                          </li>
+                          <li class="list-group-item d-flex justify-content-between">
+                            <span>Timestamp:</span>
+                            <strong>${data.verification ? data.verification.timestamp : 'No disponible'}</strong>
+                          </li>
+                          <li class="list-group-item d-flex justify-content-between ${ data.verification && data.verification.matches_config ? 'list-group-item-success' : 'list-group-item-warning' }">
+                            <span>Coincide con configuración:</span>
+                            <strong>${ data.verification && data.verification.matches_config ? 'SÍ' : 'NO' }</strong>
+                          </li>
+                        </ul>
+                        
+                        ${ data.verification && !data.verification.matches_config ? `
+                          <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <strong>Advertencia:</strong> La base de datos real no coincide con la configuración.
+                            Se recomienda reiniciar la aplicación para sincronizar la configuración.
+                          </div>
+                          <button onclick="reiniciarAplicacion()" class="btn btn-warning">
+                            <i class="fas fa-sync-alt me-2"></i>Reiniciar aplicación
+                          </button>
+                        ` : '' }
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+              
+              // Añadir el modal al DOM si no existe ya
+              if (!document.getElementById('dbVerificationModal')) {
+                const div = document.createElement('div');
+                div.innerHTML = modalHtml;
+                document.body.appendChild(div.firstChild);
+              } else {
+                document.getElementById('dbVerificationModal').remove();
+                const div = document.createElement('div');
+                div.innerHTML = modalHtml;
+                document.body.appendChild(div.firstChild);
+              }
+              
+              // Mostrar el modal
+              const verificationModal = new bootstrap.Modal(document.getElementById('dbVerificationModal'));
+              verificationModal.show();
+              
+              // Si hay discrepancia, actualizar el banner
+              if (data.verification && !data.verification.matches_config) {
+                const statusBanner = document.getElementById('db-status-banner');
+                statusBanner.classList.add('bg-warning');
+                
+                // Añadir badge de advertencia junto al botón de verificación
+                document.querySelectorAll('.verify-db-btn').forEach(btn => {
+                  btn.parentNode.innerHTML += `
+                    <span class="badge bg-danger ms-2">Discrepancia</span>
+                  `;
+                });
+              }
+            } else {
+              // Mostrar error en un toast o alerta
+              const alertDiv = document.createElement('div');
+              alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+              alertDiv.innerHTML = `
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <strong>Error al verificar:</strong> ${data.error || 'Error desconocido'}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+              `;
+              document.querySelector('.container').prepend(alertDiv);
+            }
+            
+            // Restaurar botón de verificación
+            document.querySelectorAll('.verify-db-btn').forEach(btn => {
+              btn.innerHTML = '<i class="fas fa-check"></i> Verificar';
+              btn.disabled = false;
+            });
+          })
+          .catch(error => {
+            console.error('Error al verificar la base de datos:', error);
+            
+            // Mostrar error
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            alertDiv.innerHTML = `
+              <i class="fas fa-exclamation-circle me-2"></i>
+              <strong>Error al verificar:</strong> ${error.message}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            `;
+            document.querySelector('.container').prepend(alertDiv);
+            
+            // Restaurar botón
+            document.querySelectorAll('.verify-db-btn').forEach(btn => {
+              btn.innerHTML = '<i class="fas fa-check"></i> Verificar';
+              btn.disabled = false;
+            });
+          });
+      } catch (error) {
+        console.error('Error al solicitar verificación:', error);
+        // Mostrar error en un toast o alerta
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.innerHTML = `
+          <i class="fas fa-exclamation-circle me-2"></i>
+          <strong>Error al verificar:</strong> Error interno de la aplicación. Reinicia la aplicación.
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        `;
+        document.querySelector('.container').prepend(alertDiv);
+        
+        // Restaurar botón
+        document.querySelectorAll('.verify-db-btn').forEach(btn => {
+          btn.innerHTML = '<i class="fas fa-check"></i> Verificar';
+          btn.disabled = false;
+        });
+      }
+    }
+    }
+    
+    // Función para reiniciar la aplicación
+    window.reiniciarAplicacion = function() {
+      // Mostrar alerta de confirmación
+      if (!confirm('¿Estás seguro que deseas reiniciar la aplicación?\n\nEsto cerrará todas las conexiones activas y reiniciará el servidor.')) {
+        return;
+      }
+      
+      // Mostrar spinners y deshabilitar botones de reinicio
+      document.querySelectorAll('#btn-restart-after-local, #btn-restart-after-remote').forEach(btn => {
+        // Encontrar el spinner asociado
+        const spinnerId = btn.id === 'btn-restart-after-local' ? 'restart-local-spinner' : 'restart-remote-spinner';
+        const spinner = document.getElementById(spinnerId);
+        
+        // Deshabilitar botón y mostrar spinner
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>Reiniciando...';
+        if (spinner) spinner.style.display = 'inline-block';
+      });
+      
+      // Crear overlay para bloquear interacción
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.width = '100%';
+      overlay.style.height = '100%';
+      overlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
+      overlay.style.zIndex = '9999';
+      overlay.innerHTML = `
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;text-align:center;">
+          <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;" role="status"></div>
+          <h4>Reiniciando la aplicación</h4>
+          <p>Espere un momento mientras se reinicia el servidor...</p>
+          <div class="progress mt-3">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%"></div>
+          </div>
+          <p class="text-muted mt-3">La página se recargará automáticamente.</p>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      
+      // Crear FormData para la petición de reinicio
+      const restartFormData = new FormData();
+      // Agregar el token CSRF (desde el input hidden)
+      const csrfElement = document.querySelector('input[name="csrf_token"]');
+      if (csrfElement) {
+          restartFormData.append('csrf_token', csrfElement.value);
+      } else {
+          // Fallback al valor del meta tag
+          const metaToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+          restartFormData.append('csrf_token', metaToken);
+      }
+      
+      // Obtener token para enviar en cabecera también
+      const tokenToSend = csrfElement ? csrfElement.value : document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+      
+      // Enviar solicitud para reiniciar con doble protección CSRF
+      fetch('{{ url_for("db_manager.restart_app") }}', {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': tokenToSend  // Añadir también como cabecera
+        },
+        body: restartFormData,
+        credentials: 'same-origin'
+      })
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error('Error: ' + response.status + ' ' + response.statusText);
+        }
+      })
+      .then(data => {
+        // El reinicio ha sido iniciado con éxito
+        if (data.success) {
+          // Esperar un momento para dar tiempo a que se reinicie
+          setTimeout(() => {
+            // Modificar el overlay para mostrar progreso
+            overlay.innerHTML = `
+              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;text-align:center;">
+                <div class="spinner-border text-success mb-3" style="width:3rem;height:3rem;" role="status"></div>
+                <h4>Reinicio completado</h4>
+                <p>Intentando reconectar con el servidor...</p>
+                <div class="progress mt-3">
+                  <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" style="width:100%"></div>
+                </div>
+                <p class="text-muted mt-3">Si la página no se recarga automáticamente en 20 segundos, haga clic <a href="{{ url_for('db_manager.index') }}">aquí</a>.</p>
+              </div>
+            `;
+            
+            // Crear un temporizador para intentar recargar cada 2 segundos
+            let reconnectAttempts = 0;
+            const maxAttempts = 10;
+            const reconnectInterval = setInterval(() => {
+              reconnectAttempts++;
+              
+              // Intentar una conexión simple al servidor
+              fetch('{{ url_for("db_manager.db_status") }}', { method: 'HEAD' })
+                .then(() => {
+                  // Si tiene éxito, recargar la página
+                  clearInterval(reconnectInterval);
+                  window.location.reload();
+                })
+                .catch(() => {
+                  // Si falla y se superó el número máximo de intentos, mostrar mensaje
+                  if (reconnectAttempts >= maxAttempts) {
+                    clearInterval(reconnectInterval);
+                    overlay.innerHTML = `
+                      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;text-align:center;">
+                        <i class="fas fa-exclamation-circle text-warning mb-3" style="font-size:3rem;"></i>
+                        <h4>Tiempo de espera agotado</h4>
+                        <p>El servidor puede estar tardando más de lo esperado en reiniciarse.</p>
+                        <a href="{{ url_for('db_manager.index') }}" class="btn btn-primary mt-3">Intentar acceder de nuevo</a>
+                        <button class="btn btn-secondary mt-3 ms-2" onclick="document.body.removeChild(overlay);">Cerrar</button>
+                      </div>
+                    `;
+                  }
+                });
+            }, 2000);
+          }, 3000);
+        } else {
+          // Mostrar error
+          overlay.innerHTML = `
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;text-align:center;">
+              <i class="fas fa-times-circle text-danger mb-3" style="font-size:3rem;"></i>
+              <h4>Error al reiniciar</h4>
+              <p>${data.message || 'Error desconocido'}</p>
+              <button class="btn btn-secondary mt-3" onclick="document.body.removeChild(this.parentNode.parentNode.parentNode);">Cerrar</button>
+            </div>
+          `;
+          
+          // Restaurar botones
+          document.querySelectorAll('#btn-restart-after-local, #btn-restart-after-remote').forEach(btn => {
+            // Restaurar botón a su estado original
+            hideSpinner(btn.id);
+            btn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Reiniciar aplicación ahora';
+            btn.disabled = false;
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Error al reiniciar la aplicación:', error);
+        
+        // Mostrar error en el overlay
+        overlay.innerHTML = `
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;text-align:center;">
+            <i class="fas fa-times-circle text-danger mb-3" style="font-size:3rem;"></i>
+            <h4>Error al reiniciar</h4>
+            <p>${error.message || 'Error desconocido'}</p>
+            <button class="btn btn-secondary mt-3" onclick="document.body.removeChild(this.parentNode.parentNode.parentNode);">Cerrar</button>
+          </div>
+        `;
+        
+        // Restaurar botones de reinicio
+        document.querySelectorAll('#btn-restart-after-local, #btn-restart-after-remote').forEach(btn => {
+          // Restaurar botón a su estado original
+          hideSpinner(btn.id);
+          btn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Reiniciar aplicación ahora';
+          btn.disabled = false;
+        });
+      });
+    }
+  });
+</script>
+{% endblock %}

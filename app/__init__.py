@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 import sys
+from pathlib import Path
 
 from app.config import config
 
@@ -63,6 +64,10 @@ def create_app(config_name='default'):
     with app.app_context():
         from app.services.db_service import setup_db_optimizations
         setup_db_optimizations(app)
+        
+        # Inicializar servicio de backup de base de datos
+        from app.services.db_backup_service import db_backup_service
+        db_backup_service.init_app(app)
     
     # Inicializar la base de datos dentro del contexto de la aplicación
     with app.app_context():

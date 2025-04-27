@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% block meta %}{% endblock %}
   
   <title>{% block title %}AM3.1 - Aplicación de Gestión{% endblock %}</title>
   
@@ -12,13 +13,33 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
   
+  <!-- Estilos para el banner de estado de base de datos -->
+  <style>
+    #db-global-status-banner {
+      padding: 5px 0;
+      color: white;
+      font-size: 0.9rem;
+      position: sticky;
+      top: 0;
+      z-index: 1020;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    #db-global-status-banner .btn-close-white {
+      font-size: 0.7rem;
+      opacity: 0.7;
+    }
+    #db-global-status-banner .btn-close-white:hover {
+      opacity: 1;
+    }
+  </style>
+  
   <!-- Estilos adicionales específicos de cada página -->
   {% block additional_styles %}{% endblock %}
 </head>
 
 <body class="bg-light">
   <!-- Barra de navegación -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
     <div class="container-fluid">
       <a class="navbar-brand" href="{{ url_for('index') }}">AM3.1</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
@@ -49,6 +70,23 @@
     </div>
   </nav>
 
+  <!-- Banner global de estado de base de datos -->
+  <div id="db-global-status-banner" class="d-none">
+    <div class="container-fluid">
+      <div class="d-flex justify-content-between align-items-center px-2">
+        <div>
+          <span id="db-global-status-text">Cargando información de base de datos...</span>
+        </div>
+        <div>
+          <a href="{{ url_for('db_manager.index') }}" class="text-white small me-2">
+            <i class="fas fa-cog"></i> Configurar
+          </a>
+          <button type="button" class="btn-close btn-close-white" aria-label="Cerrar" onclick="document.getElementById('db-global-status-banner').classList.add('d-none')"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
   <!-- Contenido principal -->
   <div class="container-fluid mt-4">
     <!-- Título de la página -->
@@ -89,6 +127,47 @@
   <!-- Scripts globales -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  
+  <!-- Script para verificar estado de la base de datos -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Verificar el estado de la base de datos global
+      fetch('{{ url_for("db_manager.db_status") }}')
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            const dbInfo = data.db_info;
+            const banner = document.getElementById('db-global-status-banner');
+            const statusText = document.getElementById('db-global-status-text');
+            
+            // Configurar banner según tipo de base de datos
+            if (dbInfo.type.includes('SQLite')) {
+              banner.style.backgroundColor = '#28a745';
+              statusText.innerHTML = '<i class="fas fa-database me-2"></i><strong>BASE DE DATOS LOCAL:</strong> Trabajando con SQLite en modo local';
+            } else {
+              banner.style.backgroundColor = '#0d6efd';
+              statusText.innerHTML = '<i class="fas fa-cloud me-2"></i><strong>BASE DE DATOS REMOTA:</strong> Conectado a PostgreSQL en Neon';
+            }
+            
+            // Mostrar el banner
+            banner.classList.remove('d-none');
+            
+            // Guardar preferencia si el usuario lo cierra
+            banner.querySelector('.btn-close').addEventListener('click', function() {
+              localStorage.setItem('hideDatabaseBanner', 'true');
+            });
+            
+            // Verificar si el usuario prefiere ocultarlo
+            if (localStorage.getItem('hideDatabaseBanner') === 'true') {
+              banner.classList.add('d-none');
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error al verificar estado de base de datos:', error);
+        });
+    });
+  </script>
   
   <!-- CKEditor - solo se carga si es necesario -->
   {% block ckeditor %}{% endblock %}
