@@ -1,11 +1,13 @@
 {% extends "layout/base.html" %}
 
+{% block title %}AM3.1 - Inicio{% endblock %}
+
 {% block content %}
 <div class="container py-5">
   <div class="row justify-content-center mb-5">
     <div class="col-md-8 text-center">
       <h1 class="display-4">Sistema de Gestión AM3.1</h1>
-      <p class="lead">Bienvenido a la nueva versión de la aplicación de gestión empresarial.</p>
+      <p class="lead">Bienvenido a la aplicación de gestión empresarial.</p>
     </div>
   </div>
 
@@ -14,9 +16,18 @@
     <div class="col-md-4">
       <div class="card h-100 shadow-sm">
         <div class="card-body">
-          <h5 class="card-title">Clientes</h5>
+          <div class="d-flex align-items-center mb-3">
+            <div class="bg-primary bg-opacity-10 p-3 rounded me-3">
+              <i class="fas fa-users fa-2x text-primary"></i>
+            </div>
+            <h5 class="card-title mb-0">Clientes</h5>
+          </div>
           <p class="card-text">Gestione la información de sus clientes: datos de contacto, historial y más.</p>
-          <a href="{{ url_for('clientes.listar_clientes') }}" class="btn btn-primary">Gestionar Clientes</a>
+        </div>
+        <div class="card-footer bg-transparent border-0 pb-3">
+          <a href="{{ url_for('clientes.listar_clientes') }}" class="btn btn-primary">
+            <i class="fas fa-arrow-right me-2"></i>Gestionar Clientes
+          </a>
         </div>
       </div>
     </div>
@@ -25,9 +36,18 @@
     <div class="col-md-4">
       <div class="card h-100 shadow-sm">
         <div class="card-body">
-          <h5 class="card-title">Proyectos</h5>
+          <div class="d-flex align-items-center mb-3">
+            <div class="bg-success bg-opacity-10 p-3 rounded me-3">
+              <i class="fas fa-project-diagram fa-2x text-success"></i>
+            </div>
+            <h5 class="card-title mb-0">Proyectos</h5>
+          </div>
           <p class="card-text">Administre sus proyectos, desde la planificación hasta la ejecución final.</p>
-          <a href="{{ url_for('proyectos.listar_proyectos') }}" class="btn btn-primary">Gestionar Proyectos</a>
+        </div>
+        <div class="card-footer bg-transparent border-0 pb-3">
+          <a href="{{ url_for('proyectos.listar_proyectos') }}" class="btn btn-success">
+            <i class="fas fa-arrow-right me-2"></i>Gestionar Proyectos
+          </a>
         </div>
       </div>
     </div>
@@ -36,9 +56,18 @@
     <div class="col-md-4">
       <div class="card h-100 shadow-sm">
         <div class="card-body">
-          <h5 class="card-title">Presupuestos</h5>
+          <div class="d-flex align-items-center mb-3">
+            <div class="bg-info bg-opacity-10 p-3 rounded me-3">
+              <i class="fas fa-file-invoice-dollar fa-2x text-info"></i>
+            </div>
+            <h5 class="card-title mb-0">Presupuestos</h5>
+          </div>
           <p class="card-text">Cree y gestione presupuestos para sus clientes y proyectos.</p>
-          <a href="{{ url_for('presupuestos.listar_presupuestos') }}" class="btn btn-primary">Gestionar Presupuestos</a>
+        </div>
+        <div class="card-footer bg-transparent border-0 pb-3">
+          <a href="{{ url_for('presupuestos.listar_presupuestos') }}" class="btn btn-info text-white">
+            <i class="fas fa-arrow-right me-2"></i>Gestionar Presupuestos
+          </a>
         </div>
       </div>
     </div>
@@ -47,9 +76,18 @@
     <div class="col-md-4">
       <div class="card h-100 shadow-sm">
         <div class="card-body">
-          <h5 class="card-title">Facturas</h5>
+          <div class="d-flex align-items-center mb-3">
+            <div class="bg-danger bg-opacity-10 p-3 rounded me-3">
+              <i class="fas fa-file-invoice fa-2x text-danger"></i>
+            </div>
+            <h5 class="card-title mb-0">Facturas</h5>
+          </div>
           <p class="card-text">Emita y gestione facturas para los trabajos realizados.</p>
-          <a href="{{ url_for('facturas.listar_facturas') }}" class="btn btn-primary">Gestionar Facturas</a>
+        </div>
+        <div class="card-footer bg-transparent border-0 pb-3">
+          <a href="{{ url_for('facturas.listar_facturas') }}" class="btn btn-danger">
+            <i class="fas fa-arrow-right me-2"></i>Gestionar Facturas
+          </a>
         </div>
       </div>
     </div>
@@ -58,9 +96,18 @@
     <div class="col-md-4">
       <div class="card h-100 shadow-sm">
         <div class="card-body">
-          <h5 class="card-title">Hojas de Trabajo</h5>
+          <div class="d-flex align-items-center mb-3">
+            <div class="bg-warning bg-opacity-10 p-3 rounded me-3">
+              <i class="fas fa-clipboard-list fa-2x text-warning"></i>
+            </div>
+            <h5 class="card-title mb-0">Hojas de Trabajo</h5>
+          </div>
           <p class="card-text">Controle las tareas, materiales y tiempos en sus proyectos.</p>
-          <a href="{{ url_for('hojas_trabajo.listar_hojas_trabajo') }}" class="btn btn-primary">Gestionar Hojas</a>
+        </div>
+        <div class="card-footer bg-transparent border-0 pb-3">
+          <a href="{{ url_for('hojas_trabajo.listar_hojas_trabajo') }}" class="btn btn-warning text-dark">
+            <i class="fas fa-arrow-right me-2"></i>Gestionar Hojas
+          </a>
         </div>
       </div>
     </div>
@@ -69,9 +116,18 @@
     <div class="col-md-4">
       <div class="card h-100 shadow-sm">
         <div class="card-body">
-          <h5 class="card-title">Proveedores</h5>
+          <div class="d-flex align-items-center mb-3">
+            <div class="bg-secondary bg-opacity-10 p-3 rounded me-3">
+              <i class="fas fa-truck fa-2x text-secondary"></i>
+            </div>
+            <h5 class="card-title mb-0">Proveedores</h5>
+          </div>
           <p class="card-text">Administre su red de proveedores y colaboradores.</p>
-          <a href="{{ url_for('proveedores.listar_proveedores') }}" class="btn btn-primary">Gestionar Proveedores</a>
+        </div>
+        <div class="card-footer bg-transparent border-0 pb-3">
+          <a href="{{ url_for('proveedores.listar_proveedores') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-right me-2"></i>Gestionar Proveedores
+          </a>
         </div>
       </div>
     </div>

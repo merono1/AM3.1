@@ -1,8 +1,16 @@
 # main.py
 import os
 import sys
+import logging
 from dotenv import load_dotenv
 from pathlib import Path
+
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO, 
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Cargar variables de entorno desde .env
 load_dotenv()
@@ -10,17 +18,11 @@ load_dotenv()
 # Variable para controlar si ya se ejecutó la inicialización
 is_second_run = os.environ.get('FLASK_RUN_FROM_RELOAD') == '1'
 
-# Verificación básica de DATABASE_URL (sin conexiones redundantes)
-if not os.environ.get('DATABASE_URL'):
-    print("❌ ERROR: No se ha configurado DATABASE_URL en el archivo .env")
-    print("   La aplicación está configurada para usar SOLO PostgreSQL en Neon.")
-    print("   Asegúrate de que DATABASE_URL esté correctamente definida en el archivo .env")
-    sys.exit(1)
-
-# Verificar que psycopg2 esté instalado (sin importar)
-if not is_second_run and 'psycopg2' not in sys.modules:
+# Verificar dependencias solo en la primera ejecución
+if not is_second_run:
+    # Verificar psycopg2 (solo una vez, sin duplicar la lógica)
     try:
-        __import__('psycopg2')
+        import psycopg2
     except ImportError:
         print("❌ ERROR: No se ha encontrado el módulo 'psycopg2'")
         print("   Este módulo es necesario para conectarse a PostgreSQL.")
@@ -36,19 +38,20 @@ app = create_app(os.getenv('FLASK_ENV', 'default'))
 @app.route('/check_db')
 def check_db():
     from flask import render_template_string
-    import os
     
     try:
         # Obtener las tablas disponibles utilizando SQLAlchemy
-        from flask import current_app
         from sqlalchemy import inspect
         from app import db as flask_db
         
+        # Usar una función simple para obtener las tablas
         inspector = inspect(flask_db.engine)
         tables = inspector.get_table_names()
-        tables_html = "\n".join([f"<li>{table}</li>" for table in tables])
+        tables_html = "\\n".join([f"<li>{table}</li>" for table in tables])
         
-        db_info = os.environ.get('DATABASE_URL', '').split('@')[1] if '@' in os.environ.get('DATABASE_URL', '') else 'configurada'
+        # Mostrar solo el host, no las credenciales
+        db_url = os.environ.get('DATABASE_URL', '')
+        db_info = db_url.split('@')[1] if '@' in db_url else 'configurada'
         
         return render_template_string("""<!DOCTYPE html>
             <html>
@@ -63,7 +66,7 @@ def check_db():
                             <h4 class="mb-0">✅ Conexión a PostgreSQL Exitosa</h4>
                         </div>
                         <div class="card-body">
-                            <p class="lead">Se ha conectado correctamente a la base de datos PostgreSQL en Neon.</p>
+                            <p class="lead">Se ha conectado correctamente a la base de datos PostgreSQL.</p>
                             <p><strong>Conexión:</strong> {{ db_info }}</p>
                             
                             <h5 class="mt-4">Tablas disponibles:</h5>
@@ -81,7 +84,10 @@ def check_db():
             </html>
         """, db_info=db_info, tables_html=tables_html)
     except Exception as e:
-        database_info = os.environ.get('DATABASE_URL', '').split('@')[1] if '@' in os.environ.get('DATABASE_URL', '') else 'configurada'
+        logger.error(f"Error al verificar la base de datos: {e}")
+        # Mostrar información de error ocultando credenciales
+        db_url = os.environ.get('DATABASE_URL', '')
+        database_info = db_url.split('@')[1] if '@' in db_url else 'configurada'
         
         return render_template_string("""<!DOCTYPE html>
             <html>
@@ -96,7 +102,7 @@ def check_db():
                             <h4 class="mb-0">❌ Error de Conexión a PostgreSQL</h4>
                         </div>
                         <div class="card-body">
-                            <p class="lead">No se ha podido conectar a la base de datos PostgreSQL en Neon.</p>
+                            <p class="lead">No se ha podido conectar a la base de datos PostgreSQL.</p>
                             <p><strong>Conexión:</strong> {{ db_info }}</p>
                             
                             <div class="alert alert-danger">
@@ -109,6 +115,7 @@ def check_db():
                                 <li>Asegúrate de que el módulo psycopg2-binary está instalado.</li>
                                 <li>Comprueba si hay restricciones de IP o si necesitas VPN para acceder al servidor.</li>
                                 <li>Verifica que las credenciales (usuario/contraseña) son correctas.</li>
+                                <li>Revisa si la base de datos serverless está en modo dormido y necesita tiempo para activarse.</li>
                             </ol>
                             
                             <div class="mt-4">
@@ -127,12 +134,13 @@ if __name__ == '__main__':
         print("\n=== Iniciando aplicación AM3.1 ===")
         print(f"Configuración: {os.getenv('FLASK_ENV', 'default')}")
         print(f"Escuchando en: http://localhost:{os.getenv('PORT', 5000)}")
+        print(f"Modo reloader: {'Desactivado' if os.environ.get('DISABLE_RELOADER', 'false').lower() == 'true' else 'Activado'}")
     
     # Marcar que está ejecutándose para el reinicio
     os.environ['FLASK_RUN_FROM_RELOAD'] = '1'
     
-    # Evitar activar el reloader en modo debug cuando se detecta el reinicio
-    # para prevenir mensajes duplicados
-    use_reloader = not is_second_run
+    # Decidir si usar reloader basado en una variable de entorno
+    # Esto permite desactivarlo fácilmente sin cambiar el código
+    use_reloader = not (is_second_run or os.environ.get('DISABLE_RELOADER', 'false').lower() == 'true')
     
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)), use_reloader=use_reloader)

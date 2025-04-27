@@ -19,38 +19,38 @@ logger = logging.getLogger(__name__)
 def setup_db_optimizations(app):
     """Configura optimizaciones para la base de datos cuando la aplicación está lista"""
     try:
-        with app.app_context():
-            db_engine_url = str(db.engine.url)
-            if 'postgresql' in db_engine_url:
-                logger.info("Aplicando optimizaciones para PostgreSQL...")
+        # Acceder al engine a través del app context existente
+        db_engine = db.get_engine(app)
+        db_engine_url = str(db_engine.url)
+        
+        if 'postgresql' in db_engine_url:
+            logger.info("Aplicando optimizaciones para PostgreSQL...")
+            
+            # Configurar parámetros importantes directamente en el engine
+            engine_options = {
+                'connect_args': {
+                    'connect_timeout': 30,
+                    'keepalives': 1,
+                    'keepalives_idle': 300,
+                    'keepalives_interval': 60,
+                    'keepalives_count': 5
+                },
+                'pool_pre_ping': True,
+                'pool_recycle': 1800,
+                'pool_size': 5,
+                'max_overflow': 10
+            }
+            
+            # Aplicar la configuración al engine existente
+            for key, value in engine_options.items():
+                if hasattr(db_engine, key) and key != 'connect_args':
+                    setattr(db_engine, key, value)
                 
-                # Configurar pool de conexiones para PostgreSQL
-                @event.listens_for(Engine, "connect")
-                def setup_postgresql_connection(dbapi_connection, connection_record):
-                    # Desactivar autocommit para mejorar rendimiento
-                    if hasattr(dbapi_connection, 'autocommit'):
-                        dbapi_connection.autocommit = False
-                        
-                    # Configurar tiempo de espera para consultas lentas
-                    cursor = dbapi_connection.cursor()
-                    cursor.execute("SET statement_timeout = 30000;")  # 30 segundos
-                    cursor.close()
+            # Para connect_args, extendemos los existentes
+            if hasattr(db_engine, 'connect_args'):
+                db_engine.connect_args.update(engine_options.get('connect_args', {}))
                 
-                # Registrar duración de las consultas en modo desarrollo
-                if os.environ.get('FLASK_ENV') == 'development':
-                    @event.listens_for(Engine, "before_cursor_execute")
-                    def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-                        conn.info.setdefault('query_start_time', []).append(time.time())
-                        if len(conn.info['query_start_time']) > 100:  # Evitar fugas de memoria
-                            conn.info['query_start_time'] = conn.info['query_start_time'][-100:]
-                    
-                    @event.listens_for(Engine, "after_cursor_execute")
-                    def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-                        total = time.time() - conn.info['query_start_time'].pop(-1)
-                        if total > 0.5:  # Solo registrar consultas lentas (>500ms)
-                            logger.warning(f"Consulta lenta ({total:.2f}s): {statement}")
-                
-                logger.info("Optimizaciones para PostgreSQL aplicadas correctamente")
+            logger.info("Optimizaciones para PostgreSQL aplicadas correctamente")
     except Exception as e:
         logger.warning(f"No se pudieron aplicar optimizaciones para PostgreSQL: {str(e)}")
 
@@ -61,6 +61,83 @@ def clear_cache():
     """Limpia la caché de consultas"""
     global _query_cache
     _query_cache = {}
+
+# Función para ejecutar consultas con reintentos
+def execute_with_retry(query_func, max_retries=5, retry_delay=0.2):
+    """
+    Ejecuta una función de consulta con reintentos automáticos en caso de errores de conexión
+    
+    Args:
+        query_func: Función que ejecuta la consulta a la base de datos
+        max_retries: Número máximo de reintentos
+        retry_delay: Retraso inicial entre reintentos (se incrementa exponencialmente)
+        
+    Returns:
+        El resultado de la consulta
+    """
+    retries = 0
+    last_error = None
+    
+    # Lista ampliada de errores de conexión
+    connection_errors = [
+        "ssl syscall error", 
+        "connection closed", 
+        "eof detected",
+        "the database system is starting up",
+        "could not connect to server",
+        "connection has been closed unexpectedly",
+        "terminating connection due to server shutdown",
+        "connection not open",
+        "connection already closed",
+        "connection timed out",
+        "server closed the connection unexpectedly",
+        "psycopg2.operationalerror"
+    ]
+    
+    while retries < max_retries:
+        try:
+            return query_func()
+        except SQLAlchemyError as e:
+            last_error = e
+            error_str = str(e).lower()
+            
+            # Verificar si alguno de los errores de conexión está presente
+            is_connection_error = False
+            for error_msg in connection_errors:
+                if error_msg in error_str:
+                    is_connection_error = True
+                    break
+                    
+            if is_connection_error:
+                retries += 1
+                # Exponential backoff para los reintentos (espera más tiempo en cada reintento)
+                wait_time = retry_delay * (2 ** (retries - 1))  # 0.2, 0.4, 0.8, 1.6, 3.2, ...
+                logger.warning(f"Error de conexión, reintentando ({retries}/{max_retries}) en {wait_time:.2f}s...")
+                time.sleep(wait_time)  # Espera exponencial
+                
+                # Si es el último intento, intentar un reinicio explícito de la conexión
+                if retries == max_retries - 1:
+                    logger.warning("Intentando reiniciar la conexión explícitamente...")
+                    try:
+                        db.session.rollback()
+                        db.session.close()
+                        # Intentar reconectar explícitamente
+                        db.engine.dispose()
+                    except Exception as reconnect_error:
+                        logger.error(f"Error al reiniciar conexión: {reconnect_error}")
+            else:
+                # Si no es un error de conexión, no reintentamos
+                logger.error(f"Error no relacionado con la conexión: {error_str}")
+                break
+    
+    # Si llegamos aquí, todos los reintentos fallaron
+    if last_error:
+        logger.error(f"Error después de {max_retries} intentos: {last_error}")
+        raise last_error
+    
+    # Si llegamos aquí sin error pero sin retorno, es un caso inusual
+    logger.error("Fallo desconocido en la consulta")
+    raise Exception("Fallo desconocido en la consulta")
 
 def get_all(model, order_by=None, use_cache=False):
     """
@@ -82,12 +159,19 @@ def get_all(model, order_by=None, use_cache=False):
                 logger.debug(f"Usando caché para {cache_key}")
                 return _query_cache[cache_key]
         
-        # Realizar la consulta
+        # Realizar la consulta con reintentos automáticos
+        def query_func():
+            if order_by:
+                return model.query.order_by(order_by).all()
+            else:
+                return model.query.all()
+        
+        # Ejecutar con reintentos si no es caché
         start_time = time.time()
-        if order_by:
-            result = model.query.order_by(order_by).all()
+        if not use_cache:
+            result = execute_with_retry(query_func)
         else:
-            result = model.query.all()
+            result = query_func()
         
         # Almacenar en caché si está habilitada
         if use_cache:
@@ -123,10 +207,16 @@ def get_by_id(model, id, use_cache=False):
                 logger.debug(f"Usando caché para {cache_key}")
                 return _query_cache[cache_key]
         
-        # Optimización: Usar get() en lugar de filter_by().first() 
-        # ya que get() usa caché de identidad de SQLAlchemy
+        # Función de consulta con get() para optimizar
+        def query_func():
+            return model.query.get(id)
+        
+        # Ejecutar con reintentos si no es caché
         start_time = time.time()
-        result = model.query.get(id)
+        if not use_cache:
+            result = execute_with_retry(query_func)
+        else:
+            result = query_func()
         
         # Almacenar en caché si está habilitada
         if use_cache and result is not None:
@@ -154,10 +244,13 @@ def create(model, data):
         La instancia creada si se realizó correctamente, None en caso contrario
     """
     try:
-        instance = model(**data)
-        db.session.add(instance)
-        db.session.commit()
-        return instance
+        def query_func():
+            instance = model(**data)
+            db.session.add(instance)
+            db.session.commit()
+            return instance
+        
+        return execute_with_retry(query_func)
     except SQLAlchemyError as e:
         db.session.rollback()
         logger.error(f"Error al crear {model.__name__}: {str(e)}")
@@ -176,15 +269,18 @@ def update(model, id, data):
         La instancia actualizada si se realizó correctamente, None en caso contrario
     """
     try:
-        instance = get_by_id(model, id)
-        if not instance:
-            return None
-            
-        for key, value in data.items():
-            setattr(instance, key, value)
-            
-        db.session.commit()
-        return instance
+        def query_func():
+            instance = get_by_id(model, id)
+            if not instance:
+                return None
+                
+            for key, value in data.items():
+                setattr(instance, key, value)
+                
+            db.session.commit()
+            return instance
+        
+        return execute_with_retry(query_func)
     except SQLAlchemyError as e:
         db.session.rollback()
         logger.error(f"Error al actualizar {model.__name__} con ID {id}: {str(e)}")
@@ -202,13 +298,16 @@ def delete(model, id):
         True si se eliminó correctamente, False en caso contrario
     """
     try:
-        instance = get_by_id(model, id)
-        if not instance:
-            return False
-            
-        db.session.delete(instance)
-        db.session.commit()
-        return True
+        def query_func():
+            instance = get_by_id(model, id)
+            if not instance:
+                return False
+                
+            db.session.delete(instance)
+            db.session.commit()
+            return True
+        
+        return execute_with_retry(query_func)
     except SQLAlchemyError as e:
         db.session.rollback()
         logger.error(f"Error al eliminar {model.__name__} con ID {id}: {str(e)}")
@@ -226,11 +325,14 @@ def get_filtered(model, **filters):
         Lista de instancias del modelo que cumplen los filtros
     """
     try:
-        query = model.query
-        for attr, value in filters.items():
-            if hasattr(model, attr):
-                query = query.filter(getattr(model, attr) == value)
-        return query.all()
+        def query_func():
+            query = model.query
+            for attr, value in filters.items():
+                if hasattr(model, attr):
+                    query = query.filter(getattr(model, attr) == value)
+            return query.all()
+        
+        return execute_with_retry(query_func)
     except SQLAlchemyError as e:
         logger.error(f"Error al filtrar {model.__name__}: {str(e)}")
         return []
@@ -249,9 +351,12 @@ def get_paginated(model, page=1, per_page=10, order_by=None):
         Objeto de paginación de SQLAlchemy
     """
     try:
-        if order_by:
-            return model.query.order_by(order_by).paginate(page=page, per_page=per_page, error_out=False)
-        return model.query.paginate(page=page, per_page=per_page, error_out=False)
+        def query_func():
+            if order_by:
+                return model.query.order_by(order_by).paginate(page=page, per_page=per_page, error_out=False)
+            return model.query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        return execute_with_retry(query_func)
     except SQLAlchemyError as e:
         logger.error(f"Error al paginar {model.__name__}: {str(e)}")
         return None

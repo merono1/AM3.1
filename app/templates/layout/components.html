@@ -1,6 +1,43 @@
-{% macro input_field(name, label, type='text', value='', required=false, placeholder='', class='', id='', step='', min='', max='', readonly=false, title='') %}
+{# Macros de componentes reutilizables para la aplicación #}
+
+{% macro data_table_simple(id, columns, rows, empty_message='No hay datos disponibles') %}
+<div class="table-responsive">
+  <table class="table table-striped table-hover" id="{{ id }}">
+    <thead>
+      <tr>
+        {% for column in columns %}
+        <th>{{ column.title }}</th>
+        {% endfor %}
+        <th class="text-center">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if rows and rows|length > 0 %}
+        {% for row in rows %}
+        <tr>
+          {% for column in columns %}
+            <td>{{ row[column.key]|default('') }}</td>
+          {% endfor %}
+          <td class="text-center">
+            {{ caller(row) if caller else '' }}
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="{{ columns|length + 1 }}" class="text-center">{{ empty_message }}</td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+{# ===== COMPONENTES DE FORMULARIOS ===== #}
+
+{% macro input_field(name, label, type='text', value='', required=false, placeholder='', class='', id='', step='', min='', max='', readonly=false, title='', helper_text='') %}
 <div class="mb-3">
-  <label for="{{ id or name }}" class="form-label">{{ label }}</label>
+  <label for="{{ id or name }}" class="form-label">{{ label }}{% if required %} <span class="text-danger">*</span>{% endif %}</label>
   <input type="{{ type }}" 
          class="form-control {{ class }}" 
          id="{{ id or name }}" 
@@ -13,12 +50,15 @@
          {% if max %}max="{{ max }}"{% endif %}
          {% if readonly %}readonly{% endif %}
          {% if title %}title="{{ title }}"{% endif %}>
+  {% if helper_text %}
+  <div class="form-text">{{ helper_text }}</div>
+  {% endif %}
 </div>
 {% endmacro %}
 
-{% macro textarea_field(name, label, value='', required=false, placeholder='', class='', id='', rows=3, readonly=false, title='') %}
+{% macro textarea_field(name, label, value='', required=false, placeholder='', class='', id='', rows=3, readonly=false, title='', helper_text='') %}
 <div class="mb-3">
-  <label for="{{ id or name }}" class="form-label">{{ label }}</label>
+  <label for="{{ id or name }}" class="form-label">{{ label }}{% if required %} <span class="text-danger">*</span>{% endif %}</label>
   <textarea class="form-control {{ class }}" 
             id="{{ id or name }}" 
             name="{{ name }}" 
@@ -27,19 +67,22 @@
             {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
             {% if readonly %}readonly{% endif %}
             {% if title %}title="{{ title }}"{% endif %}>{{ value }}</textarea>
+  {% if helper_text %}
+  <div class="form-text">{{ helper_text }}</div>
+  {% endif %}
 </div>
 {% endmacro %}
 
-{% macro select_field(name, label, options, selected_value='', required=false, class='', id='', readonly=false, title='') %}
+{% macro select_field(name, label, options, selected_value='', required=false, class='', id='', readonly=false, title='', helper_text='', placeholder='Seleccione...') %}
 <div class="mb-3">
-  <label for="{{ id or name }}" class="form-label">{{ label }}</label>
+  <label for="{{ id or name }}" class="form-label">{{ label }}{% if required %} <span class="text-danger">*</span>{% endif %}</label>
   <select class="form-select {{ class }}" 
           id="{{ id or name }}" 
           name="{{ name }}" 
           {% if required %}required{% endif %}
           {% if readonly %}disabled{% endif %}
           {% if title %}title="{{ title }}"{% endif %}>
-    <option value="">Seleccione...</option>
+    <option value="">{{ placeholder }}</option>
     {% for option in options %}
       {% if option is mapping %}
         <option value="{{ option.value }}" {% if option.value == selected_value %}selected{% endif %}>{{ option.label }}</option>
@@ -48,10 +91,13 @@
       {% endif %}
     {% endfor %}
   </select>
+  {% if helper_text %}
+  <div class="form-text">{{ helper_text }}</div>
+  {% endif %}
 </div>
 {% endmacro %}
 
-{% macro checkbox_field(name, label, checked=false, value='1', class='', id='', inline=false, title='') %}
+{% macro checkbox_field(name, label, checked=false, value='1', class='', id='', inline=false, title='', helper_text='') %}
 <div class="mb-3 {% if inline %}form-check-inline{% endif %}">
   <div class="form-check">
     <input type="checkbox" 
@@ -62,11 +108,14 @@
            {% if checked %}checked{% endif %}
            {% if title %}title="{{ title }}"{% endif %}>
     <label class="form-check-label" for="{{ id or name }}">{{ label }}</label>
+    {% if helper_text %}
+    <div class="form-text">{{ helper_text }}</div>
+    {% endif %}
   </div>
 </div>
 {% endmacro %}
 
-{% macro radio_field(name, options, selected_value='', class='', inline=false, title='') %}
+{% macro radio_field(name, options, selected_value='', class='', inline=false, title='', helper_text='') %}
 <div class="mb-3">
   {% for value, text in options %}
     <div class="form-check {% if inline %}form-check-inline{% endif %}">
@@ -80,10 +129,13 @@
       <label class="form-check-label" for="{{ name }}_{{ loop.index }}">{{ text }}</label>
     </div>
   {% endfor %}
+  {% if helper_text %}
+  <div class="form-text">{{ helper_text }}</div>
+  {% endif %}
 </div>
 {% endmacro %}
 
-{% macro button(text, type='button', class='btn-primary', id='', name='', value='', form='', title='') %}
+{% macro button(text, type='button', class='btn-primary', id='', name='', value='', form='', title='', icon='') %}
 <button type="{{ type }}" 
         class="btn {{ class }}" 
         id="{{ id }}" 
@@ -91,14 +143,38 @@
         {% if value %}value="{{ value }}"{% endif %}
         {% if form %}form="{{ form }}"{% endif %}
         {% if title %}title="{{ title }}"{% endif %}>
-  {{ text }}
+  {% if icon %}<i class="{{ icon }} me-1"></i>{% endif %}{{ text }}
 </button>
 {% endmacro %}
 
-{% macro error_alert(errors) %}
+{% macro form_group(name, label, type='text', value='', required=false, placeholder='', class='', id='', options=[], selected_value='', rows=3, helper_text='') %}
+  {% if type == 'text' or type == 'email' or type == 'number' or type == 'date' or type == 'password' or type == 'tel' or type == 'time' or type == 'url' %}
+    {{ input_field(name, label, type, value, required, placeholder, class, id, helper_text=helper_text) }}
+  {% elif type == 'textarea' %}
+    {{ textarea_field(name, label, value, required, placeholder, class, id, rows=rows, helper_text=helper_text) }}
+  {% elif type == 'select' %}
+    {{ select_field(name, label, options, selected_value, required, class, id, helper_text=helper_text) }}
+  {% elif type == 'checkbox' %}
+    {{ checkbox_field(name, label, checked=(value == '1' or value == true), class=class, id=id, helper_text=helper_text) }}
+  {% elif type == 'radio' %}
+    {% set formatted_options = [] %}
+    {% for option in options %}
+      {% if option is mapping %}
+        {% set formatted_options = formatted_options + [(option.value, option.label)] %}
+      {% else %}
+        {% set formatted_options = formatted_options + [(option, option)] %}
+      {% endif %}
+    {% endfor %}
+    {{ radio_field(name, formatted_options, selected_value, class, helper_text=helper_text) }}
+  {% endif %}
+{% endmacro %}
+
+{# ===== COMPONENTES DE ALERTA Y MENSAJES ===== #}
+
+{% macro error_alert(errors, title='Se han encontrado errores:') %}
 {% if errors %}
   <div class="alert alert-danger" role="alert">
-    <h4 class="alert-heading">Se han encontrado errores:</h4>
+    <h4 class="alert-heading">{{ title }}</h4>
     <ul class="mb-0">
       {% for error in errors %}
         <li>{{ error }}</li>
@@ -108,24 +184,40 @@
 {% endif %}
 {% endmacro %}
 
-{% macro confirm_modal(id, title, message, confirm_text='Confirmar', cancel_text='Cancelar', confirm_class='btn-danger') %}
-<div class="modal fade" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}_label" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="{{ id }}_label">{{ title }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body">
-        {{ message }}
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ cancel_text }}</button>
-        <button type="button" class="btn {{ confirm_class }}" id="{{ id }}_confirm">{{ confirm_text }}</button>
-      </div>
-    </div>
-  </div>
+{% macro info_alert(message, title='', dismissible=false) %}
+<div class="alert alert-info{% if dismissible %} alert-dismissible fade show{% endif %}" role="alert">
+  {% if title %}<h5 class="alert-heading">{{ title }}</h5>{% endif %}
+  <p class="mb-0">{{ message }}</p>
+  {% if dismissible %}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+  {% endif %}
 </div>
+{% endmacro %}
+
+{% macro warning_alert(message, title='', dismissible=false) %}
+<div class="alert alert-warning{% if dismissible %} alert-dismissible fade show{% endif %}" role="alert">
+  {% if title %}<h5 class="alert-heading">{{ title }}</h5>{% endif %}
+  <p class="mb-0">{{ message }}</p>
+  {% if dismissible %}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# ===== COMPONENTES DE NAVEGACIÓN Y PAGINACIÓN ===== #}
+
+{% macro breadcrumb(items) %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    {% for item in items %}
+      {% if loop.last %}
+        <li class="breadcrumb-item active" aria-current="page">{{ item.text }}</li>
+      {% else %}
+        <li class="breadcrumb-item"><a href="{{ item.url }}">{{ item.text }}</a></li>
+      {% endif %}
+    {% endfor %}
+  </ol>
+</nav>
 {% endmacro %}
 
 {% macro pagination(page, total_pages, url_for_func, extra_params={}) %}
@@ -160,45 +252,9 @@
 {% endif %}
 {% endmacro %}
 
-{% macro action_buttons(edit_url, delete_url, view_url='', confirm_id='', custom_buttons=[]) %}
-<div class="btn-group btn-group-sm" role="group" aria-label="Acciones">
-  {% if view_url %}
-  <a href="{{ view_url }}" class="btn btn-info" title="Ver detalles">
-    <i class="fas fa-eye"></i>
-  </a>
-  {% endif %}
-  
-  <a href="{{ edit_url }}" class="btn btn-primary" title="Editar">
-    <i class="fas fa-edit"></i>
-  </a>
-  
-  {% if confirm_id %}
-  <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#{{ confirm_id }}" title="Eliminar">
-    <i class="fas fa-trash"></i>
-  </button>
-  {% else %}
-  <form action="{{ delete_url }}" method="POST" class="d-inline">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-    <button type="submit" class="btn btn-danger" onclick="return confirm('¿Está seguro de que desea eliminar este elemento?')" title="Eliminar">
-      <i class="fas fa-trash"></i>
-    </button>
-  </form>
-  {% endif %}
-  
-  {% for button in custom_buttons %}
-  <a href="{{ button.url }}" class="btn {{ button.class }}" title="{{ button.title }}"
-     {% if button.data_attrs %}
-       {% for key, value in button.data_attrs.items() %}
-         data-{{ key }}="{{ value }}"
-       {% endfor %}
-     {% endif %}>
-    <i class="{{ button.icon }}"></i>
-  </a>
-  {% endfor %}
-</div>
-{% endmacro %}
+{# ===== COMPONENTES DE MODALES Y DIÁLOGOS ===== #}
 
-{% macro confirmation_modal(id, title, message, action_url, method='POST') %}
+{% macro confirm_modal(id, title, message, confirm_text='Confirmar', cancel_text='Cancelar', confirm_class='btn-danger') %}
 <div class="modal fade" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}_label" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -210,10 +266,30 @@
         {{ message }}
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ cancel_text }}</button>
+        <button type="button" class="btn {{ confirm_class }}" id="{{ id }}_confirm">{{ confirm_text }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro confirmation_modal(id, title, message, action_url, method='POST', csrf=true, confirm_text='Confirmar', cancel_text='Cancelar', confirm_class='btn-danger') %}
+<div class="modal fade" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}_label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="{{ id }}_label">{{ title }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        {{ message }}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ cancel_text }}</button>
         <form action="{{ action_url }}" method="{{ method }}" class="d-inline">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-          <button type="submit" class="btn btn-danger">Confirmar</button>
+          {% if csrf %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>{% endif %}
+          <button type="submit" class="btn {{ confirm_class }}">{{ confirm_text }}</button>
         </form>
       </div>
     </div>
@@ -221,34 +297,185 @@
 </div>
 {% endmacro %}
 
-{% macro form_group(name, label, type='text', value='', required=false, placeholder='', class='', id='', options=[], selected_value='', rows=3) %}
-  {% if type == 'text' or type == 'email' or type == 'number' or type == 'date' or type == 'password' or type == 'tel' %}
-    {{ input_field(name, label, type, value, required, placeholder, class, id) }}
-  {% elif type == 'textarea' %}
-    {{ textarea_field(name, label, value, required, placeholder, class, id, rows=rows) }}
-  {% elif type == 'select' %}
-    {{ select_field(name, label, options, selected_value, required, class, id) }}
-  {% elif type == 'checkbox' %}
-    {{ checkbox_field(name, label, checked=(value == '1' or value == true), class=class, id=id) }}
-  {% elif type == 'radio' %}
-    {% set formatted_options = [] %}
-    {% for option in options %}
-      {% if option is mapping %}
-        {% set formatted_options = formatted_options + [(option.value, option.label)] %}
-      {% else %}
-        {% set formatted_options = formatted_options + [(option, option)] %}
-      {% endif %}
-    {% endfor %}
-    {{ radio_field(name, formatted_options, selected_value, class) }}
-  {% endif %}
+{% macro form_modal(id, title, action_url, method='POST', classes='', fields=[], submit_text='Guardar', cancel_text='Cancelar') %}
+<div class="modal fade" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}_label" aria-hidden="true">
+  <div class="modal-dialog {{ classes }}">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="{{ id }}_label">{{ title }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <form action="{{ action_url }}" method="{{ method }}" id="{{ id }}_form">
+        <div class="modal-body">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          {% for field in fields %}
+            {% if field.type == 'hidden' %}
+              <input type="hidden" name="{{ field.name }}" value="{{ field.value|default('') }}" id="{{ field.id|default(field.name) }}">
+            {% else %}
+              {{ form_group(
+                name=field.name,
+                label=field.label|default(''),
+                type=field.type|default('text'),
+                value=field.value|default(''),
+                required=field.required|default(false),
+                placeholder=field.placeholder|default(''),
+                id=field.id|default(field.name),
+                options=field.options|default([]),
+                selected_value=field.selected_value|default(''),
+                rows=field.rows|default(3),
+                helper_text=field.helper_text|default('')
+              ) }}
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ cancel_text }}</button>
+          <button type="submit" class="btn btn-primary">{{ submit_text }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endmacro %}
+
+{# ===== COMPONENTES DE TABLAS Y DATOS ===== #}
+
+{% macro action_buttons(edit_url, delete_url, view_url='', confirm_id='', custom_buttons=[]) %}
+<div class="btn-group btn-group-sm" role="group" aria-label="Acciones">
+  {% if view_url %}
+  <a href="{{ view_url }}" class="btn btn-info" title="Ver detalles" data-bs-toggle="tooltip">
+    <i class="fas fa-eye"></i>
+  </a>
+  {% endif %}
+  
+  <a href="{{ edit_url }}" class="btn btn-primary" title="Editar" data-bs-toggle="tooltip">
+    <i class="fas fa-edit"></i>
+  </a>
+  
+  {% if confirm_id %}
+  <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#{{ confirm_id }}" title="Eliminar">
+    <i class="fas fa-trash"></i>
+  </button>
+  {% else %}
+  <form action="{{ delete_url }}" method="POST" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <button type="submit" class="btn btn-danger" onclick="return confirm('¿Está seguro de que desea eliminar este elemento?')" title="Eliminar" data-bs-toggle="tooltip">
+      <i class="fas fa-trash"></i>
+    </button>
+  </form>
+  {% endif %}
+  
+  {% for button in custom_buttons %}
+  <a href="{{ button.url }}" class="btn {{ button.class }}" title="{{ button.title }}" data-bs-toggle="tooltip"
+     {% if button.data_attrs %}
+       {% for key, value in button.data_attrs.items() %}
+         data-{{ key }}="{{ value }}"
+       {% endfor %}
+     {% endif %}>
+    <i class="{{ button.icon }}"></i>
+  </a>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro badge(text, type='primary', pill=false) %}
+<span class="badge {% if pill %}rounded-pill{% endif %} bg-{{ type }}">{{ text }}</span>
+{% endmacro %}
+
+{% macro status_badge(status, status_map={}) %}
+{% if status is none or status == '' %}
+  <span class="badge bg-secondary">-</span>
+{% else %}
+  {% set default_map = {
+    'Activo': 'success',
+    'Inactivo': 'secondary',
+    'Pendiente': 'warning',
+    'Completado': 'primary',
+    'Aprobado': 'success',
+    'Rechazado': 'danger',
+    'Borrador': 'warning',
+    'Enviado': 'info',
+    'Cancelado': 'danger',
+    'Finalizado': 'primary'
+  } %}
+
+  {% set badge_type = default_map[status] if status in default_map else 'secondary' %}
+
+  <span class="badge bg-{{ badge_type }}">{{ status }}</span>
+{% endif %}
+{% endmacro %}
+
+{% macro data_table(id, columns, rows, empty_message='No hay datos disponibles', status_column='', actions_column=true, filterable=true, exportable=true) %}
+<div class="table-responsive">
+  {% if filterable or exportable %}
+  <div class="d-flex justify-content-end mb-2">
+    {% if filterable %}
+    <div class="input-group me-2" style="max-width: 300px;">
+      <span class="input-group-text"><i class="fas fa-search"></i></span>
+      <input type="text" class="form-control table-filter" placeholder="Buscar..." data-table="{{ id }}">
+    </div>
+    {% endif %}
+    
+    {% if exportable %}
+    <button class="btn btn-outline-secondary" type="button" onclick="exportTableToCSV('{{ id }}', '{{ id }}.csv')">
+      <i class="fas fa-download me-1"></i> Exportar
+    </button>
+    {% endif %}
+  </div>
+  {% endif %}
+  
+  <table class="table table-striped table-hover" id="{{ id }}">
+    <thead>
+      <tr>
+        {% for column in columns %}
+        <th {% if column.width %}style="width: {{ column.width }};"{% endif %} class="{{ column.class|default('') }}">{{ column.title }}</th>
+        {% endfor %}
+        {% if actions_column %}<th class="text-center">Acciones</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% if rows and rows|length > 0 %}
+        {% for row in rows %}
+        <tr>
+          {% for column in columns %}
+            <td class="{{ column.class|default('') }}">
+              {% if status_column and column.key == status_column and row[column.key] is defined and row[column.key] is not none %}
+                {{ status_badge(row[column.key]) }}
+              {% else %}
+                {% if row[column.key] is defined and row[column.key] is not none %}
+                  {{ row[column.key] }}
+                {% else %}
+                  &nbsp;
+                {% endif %}
+              {% endif %}
+            </td>
+          {% endfor %}
+          
+          {% if actions_column %}
+          <td class="text-center">
+            {{ caller(row) if caller else '' }}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="{{ columns|length + (1 if actions_column else 0) }}" class="text-center">{{ empty_message }}</td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+{# ===== COMPONENTES DE DIRECCIÓN ===== #}
 
 {% macro csrf_input() %}
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 {% endmacro %}
 
 {% macro direccion_form(prefix='', data={}) %}
-<div class="row">
+<div class="row g-2">
   <div class="col-md-3">
     {{ form_group(prefix + 'tipo_via', 'Tipo de Vía', type='select', options=[
       {'value': 'Calle', 'label': 'Calle'},
@@ -270,7 +497,7 @@
     {{ form_group(prefix + 'puerta', 'Puerta/Piso', value=data.get('puerta', '')) }}
   </div>
 </div>
-<div class="row">
+<div class="row g-2">
   <div class="col-md-3">
     {{ form_group(prefix + 'codigo_postal', 'Código Postal', value=data.get('codigo_postal', '')) }}
   </div>
@@ -278,4 +505,202 @@
     {{ form_group(prefix + 'poblacion', 'Población', value=data.get('poblacion', '')) }}
   </div>
 </div>
+{% endmacro %}
+
+{# ===== COMPONENTES DE TARJETAS ===== #}
+
+{% macro card(title='', body='', footer='', classes='', header_classes='', body_classes='', footer_classes='') %}
+<div class="card {{ classes }}">
+  {% if title %}
+  <div class="card-header {{ header_classes }}">
+    <h5 class="card-title mb-0">{{ title }}</h5>
+  </div>
+  {% endif %}
+  
+  <div class="card-body {{ body_classes }}">
+    {{ body }}
+  </div>
+  
+  {% if footer %}
+  <div class="card-footer {{ footer_classes }}">
+    {{ footer }}
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro entity_card(title, entity_data, actions='') %}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">{{ title }}</h5>
+    <div class="btn-group">
+      {{ actions }}
+    </div>
+  </div>
+  <div class="card-body">
+    <dl class="row">
+      {% for field in entity_data %}
+        <dt class="col-sm-3">{{ field.label }}</dt>
+        <dd class="col-sm-9">{{ field.value }}</dd>
+      {% endfor %}
+    </dl>
+  </div>
+</div>
+{% endmacro %}
+
+{# ===== FORMULARIOS PREDEFINIDOS ===== #}
+
+{% macro client_form(cliente={}, action_url='', is_edit=false) %}
+<form method="post" action="{{ action_url }}" id="cliente-form" onsubmit="return validateForm('cliente-form')">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title mb-4">Datos del Cliente</h5>
+      
+      <div class="row">
+        <div class="col-md-8">
+          {{ form_group('nombre', 'Nombre', required=true, value=cliente.nombre) }}
+        </div>
+        <div class="col-md-4">
+          {{ form_group('cif_nif', 'CIF/NIF', value=cliente.cif_nif) }}
+        </div>
+      </div>
+      
+      <h6 class="mt-4 mb-3">Dirección</h6>
+      {{ direccion_form(data={
+        'tipo_via': cliente.tipo_via,
+        'nombre_via': cliente.nombre_via,
+        'numero_via': cliente.numero_via,
+        'puerta': cliente.puerta,
+        'codigo_postal': cliente.codigo_postal,
+        'poblacion': cliente.poblacion
+      }) }}
+      
+      <h6 class="mt-4 mb-3">Contacto</h6>
+      <div class="row g-2">
+        <div class="col-md-3">
+          {{ form_group('telefono1', 'Teléfono Principal', value=cliente.telefono1) }}
+        </div>
+        <div class="col-md-3">
+          {{ form_group('telefono2', 'Teléfono Secundario', value=cliente.telefono2) }}
+        </div>
+        <div class="col-md-3">
+          {{ form_group('telefono3', 'Teléfono Adicional', value=cliente.telefono3) }}
+        </div>
+        <div class="col-md-3">
+          {{ form_group('telefono4', 'Teléfono Adicional', value=cliente.telefono4) }}
+        </div>
+      </div>
+      
+      <div class="row g-2">
+        <div class="col-md-6">
+          {{ form_group('mail1', 'Email Principal', type='email', value=cliente.mail1) }}
+        </div>
+        <div class="col-md-6">
+          {{ form_group('mail2', 'Email Secundario', type='email', value=cliente.mail2) }}
+        </div>
+      </div>
+      
+      <h6 class="mt-4 mb-3">Clasificación</h6>
+      <div class="row g-2">
+        <div class="col-md-6">
+          {{ form_group('tipo_cliente', 'Tipo de Cliente', type='select', options=[
+            {'value': 'Particular', 'label': 'Particular'},
+            {'value': 'Empresa', 'label': 'Empresa'},
+            {'value': 'Administración', 'label': 'Administración Pública'},
+            {'value': 'Asociación', 'label': 'Asociación/ONG'},
+            {'value': 'Otro', 'label': 'Otro'}
+          ], selected_value=cliente.tipo_cliente) }}
+        </div>
+        <div class="col-md-6">
+          {{ form_group('categoria_cliente', 'Categoría', type='select', options=[
+            {'value': 'A', 'label': 'A - Cliente Premium'},
+            {'value': 'B', 'label': 'B - Cliente Regular'},
+            {'value': 'C', 'label': 'C - Cliente Ocasional'},
+            {'value': 'D', 'label': 'D - Cliente Potencial'}
+          ], selected_value=cliente.categoria_cliente) }}
+        </div>
+      </div>
+      
+      <h6 class="mt-4 mb-3">Notas</h6>
+      {{ form_group('notas', 'Notas', type='textarea', placeholder='Información adicional sobre el cliente...', value=cliente.notas) }}
+    </div>
+    
+    <div class="card-footer text-end">
+      <a href="{{ url_for('clientes.listar_clientes') }}" class="btn btn-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-primary">
+        {{ 'Guardar Cambios' if is_edit else 'Guardar Cliente' }}
+      </button>
+    </div>
+  </div>
+</form>
+{% endmacro %}
+
+{% macro project_form(proyecto={}, clientes=[], action_url='', is_edit=false, id_cliente_preseleccionado=none) %}
+<form method="post" action="{{ action_url }}" id="proyecto-form" onsubmit="return validateForm('proyecto-form')">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title mb-4">Datos del Proyecto</h5>
+      
+      <div class="row g-2">
+        <div class="col-md-8">
+          <div class="mb-3">
+            <label for="id_cliente" class="form-label">Cliente <span class="text-danger">*</span></label>
+            <select class="form-select" id="id_cliente" name="id_cliente" required>
+              <option value="">Seleccione un cliente...</option>
+              {% for cliente in clientes %}
+                <option value="{{ cliente.id }}" {% if id_cliente_preseleccionado and cliente.id|string == id_cliente_preseleccionado|string %}selected{% endif %}{% if proyecto.id_cliente and cliente.id|string == proyecto.id_cliente|string %}selected{% endif %}>
+                  {{ cliente.nombre }} {% if cliente.cif_nif %}({{ cliente.cif_nif }}){% endif %}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="col-md-4">
+          {{ form_group('tipo_proyecto', 'Tipo de Proyecto', type='select', options=[
+            {'value': 'Reforma', 'label': 'Reforma'},
+            {'value': 'Obra Nueva', 'label': 'Obra Nueva'},
+            {'value': 'Rehabilitación', 'label': 'Rehabilitación'},
+            {'value': 'Diseño', 'label': 'Diseño'},
+            {'value': 'Instalación', 'label': 'Instalación'},
+            {'value': 'Consultoría', 'label': 'Consultoría'},
+            {'value': 'Otro', 'label': 'Otro'}
+          ], selected_value=proyecto.tipo_proyecto) }}
+        </div>
+      </div>
+      
+      <div class="row g-2">
+        <div class="col-md-8">
+          {{ form_group('nombre_proyecto', 'Nombre del Proyecto', required=true, value=proyecto.nombre_proyecto) }}
+        </div>
+        <div class="col-md-4">
+          {{ form_group('estado', 'Estado', type='select', options=[
+            {'value': 'Activo', 'label': 'Activo'},
+            {'value': 'Finalizado', 'label': 'Finalizado'},
+            {'value': 'Cancelado', 'label': 'Cancelado'},
+            {'value': 'En Espera', 'label': 'En Espera'}
+          ], selected_value=proyecto.estado) }}
+        </div>
+      </div>
+      
+      <h6 class="mt-4 mb-3">Dirección del Proyecto</h6>
+      
+      {{ direccion_form(data=proyecto) }}
+
+      <div class="mt-3">
+        <button type="button" id="btn-usar-dir-cliente" class="btn btn-outline-secondary">
+          <i class="fas fa-copy"></i> Usar dirección del cliente seleccionado
+        </button>
+      </div>
+    </div>
+    
+    <div class="card-footer text-end">
+      <a href="{{ url_for('proyectos.listar_proyectos') }}" class="btn btn-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-primary">
+        {{ 'Guardar Cambios' if is_edit else 'Guardar Proyecto' }}
+      </button>
+    </div>
+  </div>
+</form>
 {% endmacro %}

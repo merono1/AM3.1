@@ -1,16 +1,30 @@
 import os
-import sqlite3
+import logging
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
-from pathlib import Path
 import sys
 
 from app.config import config
 
-# Inicialización de extensiones
-db = SQLAlchemy()
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Inicialización de extensiones con opciones mejoradas para PostgreSQL
+db = SQLAlchemy(engine_options={
+    'pool_pre_ping': True,      # Verifica la conexión antes de usarla
+    'pool_recycle': 60,        # Reduce el tiempo de reciclaje a 1 minuto
+    'pool_timeout': 10,        # Reduce el tiempo límite de obtención de conexión
+    'pool_size': 10,           # Aumenta el tamaño del pool para mayor disponibilidad
+    'max_overflow': 20,        # Aumenta el máximo de conexiones adicionales
+    'echo': False,             # Desactiva el logging de SQL para mejorar rendimiento
+    'echo_pool': False         # Desactiva el logging de pool para mejorar rendimiento
+})
 migrate = Migrate()
 csrf = CSRFProtect()
 
@@ -26,25 +40,6 @@ def create_app(config_name='default'):
     """
     app = Flask(__name__)
     app.config.from_object(config[config_name])
-    
-    # Verifica si usamos PostgreSQL
-    using_postgres = 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI']
-    
-    if using_postgres:
-        # No necesita imprimir mensaje - ya se hace en config.py
-        # Importar psycopg2 sin verificación adicional
-        try:
-            import psycopg2
-            # No realizar mensajes ni verificaciones redundantes
-        except ImportError:
-            print("❌ Error: psycopg2 no está instalado")
-            print("   Instala psycopg2-binary con: pip install psycopg2-binary")
-            sys.exit(1)
-    else:
-        # La aplicación debe usar PostgreSQL exclusivamente
-        print("❌ Error: La aplicación está configurada para usar únicamente PostgreSQL")
-        print("   Configura DATABASE_URL en el archivo .env")
-        sys.exit(1)
     
     # Inicializar extensiones con la app
     db.init_app(app)
@@ -63,6 +58,12 @@ def create_app(config_name='default'):
     
     app.jinja_env.filters['sanitize_html'] = sanitize_html
     
+    # Aplicar optimizaciones ANTES de usar la BD
+    # IMPORTANTE: Debe estar dentro del app context
+    with app.app_context():
+        from app.services.db_service import setup_db_optimizations
+        setup_db_optimizations(app)
+    
     # Inicializar la base de datos dentro del contexto de la aplicación
     with app.app_context():
         try:
@@ -76,17 +77,18 @@ def create_app(config_name='default'):
             
             # Crear todas las tablas
             db.create_all()
-            print("✅ Tablas de base de datos creadas correctamente")
+            logger.info("Tablas de base de datos creadas correctamente")
             
             # Verificar las tablas creadas
             from sqlalchemy import inspect
             inspector = inspect(db.engine)
             created_tables = inspector.get_table_names()
             
-            print("Tablas verificadas en la base de datos:")
+            logger.info("Tablas verificadas en la base de datos:")
             for table in created_tables:
-                print(f" - {table}")
+                logger.info(f" - {table}")
         except Exception as e:
+            logger.error(f"Error al crear tablas: {e}")
             print(f"❌ Error al crear tablas: {e}")
             print("   Verifica que la base de datos esté correctamente configurada.")
             sys.exit(1)
@@ -94,10 +96,6 @@ def create_app(config_name='default'):
     # Registrar blueprints
     from app.routes import register_blueprints
     register_blueprints(app)
-    
-    # Aplicar optimizaciones de base de datos
-    from app.services.db_service import setup_db_optimizations
-    setup_db_optimizations(app)
     
     # Página de inicio
     @app.route('/')

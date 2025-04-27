@@ -36,6 +36,23 @@ def listar_clientes():
         
         return render_template('errors/database.html', error=str(e), mensaje=mensaje, db_path=db_path)
 
+@clientes_bp.route('/debug')
+def listar_clientes_debug():
+    try:
+        # Verificar la conexión a la base de datos
+        from sqlalchemy import text
+        db.session.execute(text("SELECT 1")).scalar()
+        
+        # Si llegamos aquí, la conexión funciona
+        clientes = get_all(Cliente)
+        return render_template('clientes/lista_simplificada.html', clientes=clientes)
+    
+    except Exception as e:
+        # Si hay un error de conexión, mostrar mensaje amigable
+        flash(f'Error al conectar con la base de datos: {str(e)}', 'danger')
+        db_path = os.environ.get('DB_PATH', 'app/data/app.db')
+        return render_template('errors/database.html', error=str(e), mensaje="Error en vista simplificada", db_path=db_path)
+
 @clientes_bp.route('/nuevo', methods=['GET', 'POST'])
 def nuevo_cliente():
     if request.method == 'POST':

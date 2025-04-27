@@ -1,0 +1,58 @@
+{% extends 'layout/base.html' %}
+{% from 'layout/components.html' import data_table_simple, action_buttons %}
+
+{% block title %}AM3.1 - Clientes (Simplificado){% endblock %}
+
+{% block page_title %}Gestión de Clientes{% endblock %}
+
+{% block page_actions %}
+<div class="col text-end">
+  <a href="{{ url_for('clientes.nuevo_cliente') }}" class="btn btn-primary">
+    <i class="fas fa-plus me-2"></i>Nuevo Cliente
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-body">
+    <p class="text-info mb-3">Vista simplificada para diagnóstico</p>
+    
+    {% call data_table_simple(
+      id='clientes-table',
+      columns=[
+        {'title': 'ID', 'key': 'id'},
+        {'title': 'Nombre', 'key': 'nombre'},
+        {'title': 'CIF/NIF', 'key': 'cif_nif'},
+        {'title': 'Teléfono', 'key': 'telefono'},
+        {'title': 'Email', 'key': 'email'}
+      ],
+      rows=[
+        {
+          'id': cliente.id,
+          'nombre': cliente.nombre,
+          'cif_nif': cliente.cif_nif,
+          'telefono': cliente.telefono1,
+          'email': cliente.mail1
+        }
+        for cliente in clientes
+      ],
+      empty_message='No hay clientes registrados'
+    ) %}
+      {% for row in rows %}
+        <div class="btn-group btn-group-sm">
+          <a href="{{ url_for('clientes.editar_cliente', id=row.id) }}" class="btn btn-primary">
+            <i class="fas fa-edit"></i>
+          </a>
+          <form action="{{ url_for('clientes.eliminar_cliente', id=row.id) }}" method="POST" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <button type="submit" class="btn btn-danger" onclick="return confirm('¿Está seguro de que desea eliminar este cliente?')">
+              <i class="fas fa-trash"></i>
+            </button>
+          </form>
+        </div>
+      {% endfor %}
+    {% endcall %}
+  </div>
+</div>
+{% endblock %}

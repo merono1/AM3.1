@@ -3,7 +3,7 @@ echo Activando entorno virtual de AM3.1...
 
 IF NOT EXIST venv (
     echo No se encontro el entorno virtual. Crealo primero con:
-    echo python setup_venv.py
+    echo python -m venv venv
     exit /b
 )
 
@@ -18,5 +18,6 @@ IF %ERRORLEVEL% NEQ 0 (
     echo Puedes ejecutar los siguientes comandos:
     echo - python check_db.py      : Verificar la base de datos
     echo - python init_db.py       : Inicializar la base de datos
-    echo - python run.py           : Ejecutar la aplicacion
+    echo - python main.py          : Ejecutar la aplicacion
+    echo - app_run.bat             : Metodo alternativo para ejecutar la aplicacion
 )

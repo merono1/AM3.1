@@ -1,111 +1,132 @@
 {% extends "layout/base.html" %}
-{% from 'layout/components.html' import action_buttons, confirmation_modal %}
 
 {% block title %}AM3.1 - Proyectos{% endblock %}
 
 {% block page_title %}Gestión de Proyectos{% endblock %}
 
-{% block content %}
-<div class="row mb-4">
-    <div class="col">
-        <a href="{{ url_for('proyectos.nuevo_proyecto') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Nuevo Proyecto
-        </a>
-    </div>
-    <div class="col-md-4">
-        <div class="input-group">
-            <input type="text" class="form-control table-filter" placeholder="Buscar proyecto..." data-table="proyectos-table">
-            <button class="btn btn-outline-secondary" type="button" onclick="exportTableToCSV('proyectos-table', 'proyectos.csv')">
-                <i class="fas fa-download"></i> Exportar
-            </button>
-        </div>
-    </div>
+{% block page_actions %}
+<div class="col text-end">
+  <a href="{{ url_for('proyectos.nuevo_proyecto') }}" class="btn btn-primary">
+    <i class="fas fa-plus me-2"></i>Nuevo Proyecto
+  </a>
 </div>
+{% endblock %}
 
+{% block content %}
 <div class="card">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover" id="proyectos-table">
-                <thead>
-                    <tr>
-                        <th>Referencia</th>
-                        <th>Cliente</th>
-                        <th>Tipo</th>
-                        <th>Nombre del Proyecto</th>
-                        <th>Dirección</th>
-                        <th>Fecha Creación</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for proyecto in proyectos %}
-                    <tr>
-                        <td>
-                            <span class="badge bg-info text-dark" data-bs-toggle="tooltip" title="PR: Prefijo | XXX: Cliente | TT: Tipo | DDMMAA: Fecha">
-                                {{ proyecto.referencia }}
-                            </span>
-                        </td>
-                        <td>{{ proyecto.cliente.nombre if proyecto.cliente else 'Sin cliente' }}</td>
-                        <td>{{ proyecto.tipo_proyecto or 'No especificado' }}</td>
-                        <td>{{ proyecto.nombre_proyecto or 'Sin nombre' }}</td>
-                        <td>
-                            {% if proyecto.nombre_via %}
-                                {{ proyecto.nombre_via }}
-                                {% if proyecto.numero %} {{ proyecto.numero }}{% endif %}
-                                {% if proyecto.puerta %}, {{ proyecto.puerta }}{% endif %}
-                                {% if proyecto.codigo_postal or proyecto.poblacion %},
-                                    {{ proyecto.codigo_postal }} {{ proyecto.poblacion }}
-                                {% endif %}
-                            {% else %}
-                                <em>No especificada</em>
-                            {% endif %}
-                        </td>
-                        <td>{{ proyecto.fecha_creacion.strftime('%d/%m/%Y') if proyecto.fecha_creacion else 'No especificada' }}</td>
-                        <td>
-                            <span class="badge {% if proyecto.estado == 'Activo' %}bg-success{% elif proyecto.estado == 'Finalizado' %}bg-primary{% elif proyecto.estado == 'Cancelado' %}bg-danger{% else %}bg-secondary{% endif %}">
-                                {{ proyecto.estado or 'No especificado' }}
-                            </span>
-                        </td>
-                        <td>
-                            {{ action_buttons(
-                                edit_url=url_for('proyectos.editar_proyecto', id=proyecto.id),
-                                delete_url=url_for('proyectos.eliminar_proyecto', id=proyecto.id),
-                                confirm_id='delete-modal-' + proyecto.id|string,
-                                custom_buttons=[
-                                    {
-                                        'url': '#',
-                                        'class': 'btn-info ver-presupuestos-btn',
-                                        'icon': 'fas fa-file-invoice-dollar',
-                                        'title': 'Ver presupuestos',
-                                        'data_attrs': {'proyecto-id': proyecto.id|string}
-                                    },
-                                    {
-                                        'url': url_for('presupuestos.nuevo_presupuesto') + '?id_proyecto=' + proyecto.id|string,
-                                        'class': 'btn-primary',
-                                        'icon': 'fas fa-plus',
-                                        'title': 'Crear presupuesto'
-                                    }
-                                ]
-                            ) }}
-                            
-                            {{ confirmation_modal(
-                                id='delete-modal-' + proyecto.id|string,
-                                title='Confirmar eliminación',
-                                message='¿Está seguro de que desea eliminar el proyecto "' + (proyecto.nombre_proyecto or proyecto.referencia) + '"? Esta acción no se puede deshacer.',
-                                action_url=url_for('proyectos.eliminar_proyecto', id=proyecto.id)
-                            ) }}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="8" class="text-center">No hay proyectos registrados</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover" id="proyectos-table">
+        <thead>
+          <tr>
+            <th style="width: 12%">Referencia</th>
+            <th style="width: 15%">Cliente</th>
+            <th style="width: 10%">Tipo</th>
+            <th style="width: 25%">Nombre del Proyecto</th>
+            <th style="width: 20%">Dirección</th>
+            <th style="width: 10%">Fecha Creación</th>
+            <th style="width: 8%" class="text-center">Estado</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if proyectos and proyectos|length > 0 %}
+            {% for proyecto in proyectos %}
+            <tr>
+              <td>{{ proyecto.referencia or '' }}</td>
+              <td>
+                {% if proyecto.cliente %}
+                  {{ proyecto.cliente.nombre }}
+                {% else %}
+                  Sin cliente
+                {% endif %}
+              </td>
+              <td>{{ proyecto.tipo_proyecto or 'No especificado' }}</td>
+              <td>{{ proyecto.nombre_proyecto or 'Sin nombre' }}</td>
+              <td>
+                {% if proyecto.nombre_via %}
+                  {{ proyecto.nombre_via }}
+                  {% if proyecto.numero %} {{ proyecto.numero }}{% endif %}
+                  {% if proyecto.puerta %}, {{ proyecto.puerta }}{% endif %}
+                  {% if proyecto.codigo_postal and proyecto.poblacion %}, 
+                    {{ proyecto.codigo_postal }} {{ proyecto.poblacion }}
+                  {% endif %}
+                {% else %}
+                  No especificada
+                {% endif %}
+              </td>
+              <td>
+                {% if proyecto.fecha_creacion %}
+                  {{ proyecto.fecha_creacion.strftime('%d/%m/%Y') }}
+                {% else %}
+                  No especificada
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if proyecto.estado %}
+                  {% set badge_color = {
+                    'Activo': 'success',
+                    'Finalizado': 'primary',
+                    'Cancelado': 'danger',
+                    'En Espera': 'warning'
+                  } %}
+                  <span class="badge bg-{{ badge_color.get(proyecto.estado, 'secondary') }}">{{ proyecto.estado }}</span>
+                {% else %}
+                  <span class="badge bg-secondary">No especificado</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <div class="btn-group btn-group-sm">
+                  <a href="{{ url_for('proyectos.editar_proyecto', id=proyecto.id) }}" class="btn btn-primary" title="Editar">
+                    <i class="fas fa-edit"></i>
+                  </a>
+                  
+                  <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#delete-modal-{{ proyecto.id }}" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                  
+                  <a href="#" class="btn btn-info ver-presupuestos-btn" title="Ver presupuestos" data-proyecto-id="{{ proyecto.id }}">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                  </a>
+                  
+                  <a href="{{ url_for('presupuestos.nuevo_presupuesto') }}?id_proyecto={{ proyecto.id }}" class="btn btn-primary" title="Crear presupuesto">
+                    <i class="fas fa-plus"></i>
+                  </a>
+                </div>
+                
+                <!-- Modal de confirmación para eliminar -->
+                <div class="modal fade" id="delete-modal-{{ proyecto.id }}" tabindex="-1" aria-labelledby="delete-modal-{{ proyecto.id }}_label" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="delete-modal-{{ proyecto.id }}_label">Confirmar eliminación</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                      </div>
+                      <div class="modal-body">
+                        ¿Está seguro de que desea eliminar el proyecto "{{ proyecto.nombre_proyecto or proyecto.referencia or 'Sin nombre' }}"? Esta acción no se puede deshacer.
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <form action="{{ url_for('proyectos.eliminar_proyecto', id=proyecto.id) }}" method="POST" class="d-inline">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                          <button type="submit" class="btn btn-danger">Confirmar</button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" class="text-center">No hay proyectos registrados</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
     </div>
+  </div>
 </div>
 
 <!-- Modal para ver presupuestos asociados -->
@@ -132,7 +153,9 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   // Al hacer clic en los botones para ver presupuestos
@@ -155,12 +178,6 @@ document.addEventListener("DOMContentLoaded", function(){
         });
     });
   });
-  
-  // Inicializar los tooltips de Bootstrap
-  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-    return new bootstrap.Tooltip(tooltipTriggerEl)
-  })
 });
 </script>
 {% endblock %}
