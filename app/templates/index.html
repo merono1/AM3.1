@@ -11,23 +11,23 @@
     </div>
   </div>
 
-  <!-- Banner de Gestión de Base de Datos -->
+  <!-- Banner de Base de Datos Local -->
   <div class="row justify-content-center mb-5">
     <div class="col-md-10">
-      <div class="card shadow border-primary">
+      <div class="card shadow border-success">
         <div class="card-body p-4">
           <div class="row align-items-center">
             <div class="col-md-8">
               <h4 class="card-title mb-1">
-                <i class="fas fa-database me-2 text-primary"></i>Gestión de Base de Datos
+                <i class="fas fa-database me-2 text-success"></i>Base de Datos Local
               </h4>
               <p class="card-text mb-0">
-                Descarga la base de datos de Neon, trabaja localmente y sincroniza cambios cuando lo necesites.
+                Trabajando con base de datos SQLite local. Todos los datos se almacenan localmente en tu equipo.
               </p>
             </div>
             <div class="col-md-4 text-md-end mt-3 mt-md-0">
-              <a href="{{ url_for('db_manager.index') }}" class="btn btn-primary btn-lg">
-                <i class="fas fa-cog me-2"></i>Gestionar Base de Datos
+              <a href="{{ url_for('check_db') }}" class="btn btn-success btn-lg">
+                <i class="fas fa-check-circle me-2"></i>Verificar Base de Datos
               </a>
             </div>
           </div>

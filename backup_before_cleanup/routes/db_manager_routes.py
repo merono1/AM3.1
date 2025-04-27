@@ -1,12 +1,4 @@
-# Ruta para verificar si el servidor está activo (para polling)
-@db_manager.route('/check-status', methods=['GET'])
-def check_server_status():
-    """Verifica si el servidor está activo (para polling)."""
-    return jsonify({
-        "success": True,
-        "status": "running",
-        "timestamp": time.time()
-    })"""
+"""
 Rutas para gestión de base de datos, permitiendo cambiar entre local y remota.
 """
 
@@ -29,6 +21,16 @@ logger = logging.getLogger(__name__)
 
 # Crear blueprint
 db_manager = Blueprint('db_manager', __name__, url_prefix='/db-manager')
+
+# Ruta para verificar si el servidor está activo (para polling)
+@db_manager.route('/check-status', methods=['GET'])
+def check_server_status():
+    """Verifica si el servidor está activo (para polling)."""
+    return jsonify({
+        "success": True,
+        "status": "running",
+        "timestamp": time.time()
+    })
 
 @db_manager.route('/')
 def index():
@@ -433,24 +435,75 @@ def restart_app():
         
         # Función para reiniciar la aplicación después de un breve retraso
         def delayed_restart():
+            logger.info("Programando reinicio con retraso de 1 segundo...")
             time.sleep(1)  # Esperar 1 segundo para que la respuesta HTTP se complete
             logger.info("Ejecutando reinicio de la aplicación...")
             try:
                 # Obtener ruta completa del ejecutable Python actual
                 python_exe = sys.executable
-                # Obtener ruta completa del script principal
-                main_script = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'main.py')
-                # Ejecutar el comando para reiniciar
-                subprocess.Popen([python_exe, main_script])
+                logger.info(f"Usando Python: {python_exe}")
+                
+                # Usar rutas relativas para mayor portabilidad entre máquinas
+                # Obtener la ruta base del proyecto - independiente del sistema
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                main_script = os.path.join(base_dir, 'main.py')
+                logger.info(f"Ruta del script principal: {main_script}")
+                
+                # Verificar que el archivo main.py existe
+                if not os.path.exists(main_script):
+                    logger.error(f"Error: El archivo {main_script} no existe")
+                    return
+                
+                # Ejecutar el comando para reiniciar con prioridad alta
+                logger.info(f"Ejecutando comando: {python_exe} {main_script}")
+                # Usar subprocess.run para capturar salida y errores
+                try:
+                    # En Windows, usar creationflags para dar prioridad alta
+                    if os.name == 'nt':
+                        process = subprocess.Popen(
+                            [python_exe, main_script],
+                            creationflags=subprocess.CREATE_NEW_CONSOLE,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True
+                        )
+                        logger.info(f"Proceso iniciado con PID: {process.pid}")
+                    else:  # En Linux/Mac
+                        process = subprocess.Popen(
+                            [python_exe, main_script],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True
+                        )
+                        logger.info(f"Proceso iniciado con PID: {process.pid}")
+                    
+                    # Esperar un máximo de 3 segundos para procesar salida inicial
+                    stdout, stderr = process.communicate(timeout=3)
+                    logger.info(f"Salida inicial: {stdout}")
+                    if stderr:
+                        logger.warning(f"Errores iniciales: {stderr}")
+                    
+                except subprocess.TimeoutExpired:
+                    # Esto es normal, significa que el proceso sigue ejecutándose
+                    logger.info("El proceso sigue ejecutándose (esperable)")
+                except Exception as sub_e:
+                    logger.error(f"Error al iniciar proceso: {sub_e}")
+                
+                logger.info("Comando de reinicio ejecutado, cerrando proceso actual...")
+                # Esperar un momento para asegurar que se inicie el nuevo proceso
+                time.sleep(2)
                 # Finalizar el proceso actual
+                logger.info("Saliendo con os._exit(0)")
                 os._exit(0)
             except Exception as e:
                 logger.error(f"Error al reiniciar la aplicación: {e}")
         
         # Iniciar el proceso de reinicio en un hilo separado
+        logger.info("Creando hilo para reinicio...")
         restart_thread = threading.Thread(target=delayed_restart)
         restart_thread.daemon = True
         restart_thread.start()
+        logger.info("Hilo de reinicio iniciado")
         
         # Enviar respuesta según el tipo de petición
         if is_ajax:
@@ -472,6 +525,13 @@ def restart_app():
         else:
             flash(f"Error al reiniciar la aplicación: {str(e)}", "danger")
             return redirect(url_for('db_manager.index'))
+
+# Ruta alternativa para reiniciar (para mayor compatibilidad)
+@db_manager.route('/restart_app', methods=['POST'])
+def restart_app_alt():
+    """Alias de la ruta restart para mayor compatibilidad."""
+    logger.info("Usando ruta alternativa /restart_app")
+    return restart_app()
 
 # Ruta para verificación en tiempo real de la base de datos
 @db_manager.route('/verify_db', methods=['GET'])

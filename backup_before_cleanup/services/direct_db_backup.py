@@ -29,7 +29,12 @@ class DirectDatabaseTransfer:
         """
         self.pg_url = pg_url
         self.sqlite_path = Path(sqlite_path) if sqlite_path else None
-        self.backup_dir = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))) / 'backups'
+        # Usar rutas absolutas con os.path.abspath para mayor portabilidad
+        self.backup_dir = Path(os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))) / 'backups'
+        
+        # Log de las rutas para diagnóstico
+        logger.info(f"Servicio Directo - Directorio de backups: {self.backup_dir}")
+        logger.info(f"Servicio Directo - Ruta de BD SQLite: {self.sqlite_path}")
         
         # Asegurar que exista directorio de backups
         self.backup_dir.mkdir(exist_ok=True, parents=True)
@@ -409,8 +414,11 @@ def get_direct_transfer(app=None):
         # Valores por defecto si no hay app
         import os
         from pathlib import Path
-        base_dir = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        # Usar rutas absolutas para mayor portabilidad
+        base_dir = Path(os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
         pg_url = os.environ.get('DATABASE_URL')
         sqlite_path = os.environ.get('DB_PATH') or str(base_dir / 'instance' / 'app.db')
+        logger.info(f"get_direct_transfer - Ruta base: {base_dir}")
+        logger.info(f"get_direct_transfer - Ruta SQLite: {sqlite_path}")
     
     return DirectDatabaseTransfer(pg_url, sqlite_path)

@@ -15,44 +15,24 @@ import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Función para aplicar optimizaciones PostgreSQL cuando se inicia la aplicación
+# Función para aplicar optimizaciones SQLite cuando se inicia la aplicación
 def setup_db_optimizations(app):
-    """Configura optimizaciones para la base de datos cuando la aplicación está lista"""
+    """Configura optimizaciones para la base de datos SQLite cuando la aplicación está lista"""
     try:
-        # Acceder al engine a través del app context existente
-        db_engine = db.get_engine(app)
-        db_engine_url = str(db_engine.url)
+        # Configurar pragmas para mejorar rendimiento
+        @event.listens_for(Engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging
+            cursor.execute("PRAGMA synchronous=NORMAL")  # Menos escrituras a disco (pero aún seguro)
+            cursor.execute("PRAGMA cache_size=5000")  # Más cache en memoria (5MB)
+            cursor.execute("PRAGMA temp_store=MEMORY")  # Almacenar tablas temporales en memoria
+            cursor.execute("PRAGMA foreign_keys=ON")  # Garantizar integridad referencial
+            cursor.close()
         
-        if 'postgresql' in db_engine_url:
-            logger.info("Aplicando optimizaciones para PostgreSQL...")
-            
-            # Configurar parámetros importantes directamente en el engine
-            engine_options = {
-                'connect_args': {
-                    'connect_timeout': 30,
-                    'keepalives': 1,
-                    'keepalives_idle': 300,
-                    'keepalives_interval': 60,
-                    'keepalives_count': 5
-                },
-                'pool_pre_ping': True,
-                'pool_recycle': 1800,
-                'pool_size': 5,
-                'max_overflow': 10
-            }
-            
-            # Aplicar la configuración al engine existente
-            for key, value in engine_options.items():
-                if hasattr(db_engine, key) and key != 'connect_args':
-                    setattr(db_engine, key, value)
-                
-            # Para connect_args, extendemos los existentes
-            if hasattr(db_engine, 'connect_args'):
-                db_engine.connect_args.update(engine_options.get('connect_args', {}))
-                
-            logger.info("Optimizaciones para PostgreSQL aplicadas correctamente")
+        logger.info("Optimizaciones para SQLite configuradas correctamente")
     except Exception as e:
-        logger.warning(f"No se pudieron aplicar optimizaciones para PostgreSQL: {str(e)}")
+        logger.warning(f"No se pudieron aplicar optimizaciones para SQLite: {str(e)}")
 
 # Mantener una caché simple para consultas frecuentes
 _query_cache = {}
@@ -78,20 +58,16 @@ def execute_with_retry(query_func, max_retries=5, retry_delay=0.2):
     retries = 0
     last_error = None
     
-    # Lista ampliada de errores de conexión
+    # Lista de errores de conexión para SQLite
     connection_errors = [
-        "ssl syscall error", 
-        "connection closed", 
-        "eof detected",
-        "the database system is starting up",
-        "could not connect to server",
-        "connection has been closed unexpectedly",
-        "terminating connection due to server shutdown",
-        "connection not open",
-        "connection already closed",
-        "connection timed out",
-        "server closed the connection unexpectedly",
-        "psycopg2.operationalerror"
+        "database is locked",
+        "disk i/o error",
+        "unable to open database file",
+        "no such table",
+        "disk full",
+        "database or disk is full",
+        "database schema has changed",
+        "database disk image is malformed"
     ]
     
     while retries < max_retries:

@@ -1,4 +1,52 @@
-"""
+    def _update_env_file(self, key, value):
+        """
+        Actualiza una clave en el archivo .env
+        
+        Args:
+            key: Clave a actualizar
+            value: Nuevo valor
+            
+        Returns:
+            bool: Éxito de la operación
+        """
+        try:
+            # Ruta al archivo .env
+            env_path = self.base_dir / '.env'
+            
+            if not env_path.exists():
+                logger.error(f"Archivo .env no encontrado en {env_path}")
+                return False
+            
+            # Leer contenido actual
+            with open(env_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            # Encontrar y modificar la línea correspondiente
+            key_found = False
+            updated_lines = []
+            
+            for line in lines:
+                line = line.strip()
+                if line.startswith(f"{key}=") or line.startswith(f"{key} ="):
+                    updated_lines.append(f"{key}={value}\n")
+                    key_found = True
+                else:
+                    updated_lines.append(f"{line}\n")
+            
+            # Si la clave no existe, agregar al final
+            if not key_found:
+                updated_lines.append(f"{key}={value}\n")
+            
+            # Escribir archivo actualizado
+            with open(env_path, 'w', encoding='utf-8') as f:
+                f.writelines(updated_lines)
+            
+            logger.info(f"Archivo .env actualizado correctamente para {key}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error al actualizar el archivo .env: {e}")
+            return False"""
 Servicio para gestión de copias de seguridad y sincronización de bases de datos.
 Permite trabajar con una base de datos local y sincronizar con PostgreSQL (Neon).
 """
@@ -25,10 +73,14 @@ class DatabaseBackupService:
     
     def __init__(self, app=None):
         self.app = app
-        # Rutas predeterminadas
-        self.base_dir = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        # Rutas predeterminadas usando rutas absolutas con os.path.abspath para mayor portabilidad
+        self.base_dir = Path(os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
         self.backup_dir = self.base_dir / 'backups'
         self.local_db_path = self.base_dir / 'instance' / 'app.db'
+        # Log de las rutas para diagnóstico
+        logger.info(f"Directorio base: {self.base_dir}")
+        logger.info(f"Directorio de backups: {self.backup_dir}")
+        logger.info(f"Ruta de BD local: {self.local_db_path}")
         
         # Asegurar que exista el directorio de backups
         self.backup_dir.mkdir(exist_ok=True, parents=True)
@@ -227,6 +279,56 @@ class DatabaseBackupService:
             return True
         return False
     
+    def _update_env_file(self, key, value):
+        """
+        Actualiza una clave en el archivo .env
+        
+        Args:
+            key: Clave a actualizar
+            value: Nuevo valor
+            
+        Returns:
+            bool: Éxito de la operación
+        """
+        try:
+            # Ruta al archivo .env
+            env_path = self.base_dir / '.env'
+            
+            if not env_path.exists():
+                logger.error(f"Archivo .env no encontrado en {env_path}")
+                return False
+            
+            # Leer contenido actual
+            with open(env_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            # Encontrar y modificar la línea correspondiente
+            key_found = False
+            updated_lines = []
+            
+            for line in lines:
+                line_strip = line.strip()
+                if line_strip.startswith(f"{key}=") or line_strip.startswith(f"{key} ="):
+                    updated_lines.append(f"{key}={value}\n")
+                    key_found = True
+                else:
+                    updated_lines.append(line)
+            
+            # Si la clave no existe, agregar al final
+            if not key_found:
+                updated_lines.append(f"\n{key}={value}\n")
+            
+            # Escribir archivo actualizado
+            with open(env_path, 'w', encoding='utf-8') as f:
+                f.writelines(updated_lines)
+            
+            logger.info(f"Archivo .env actualizado correctamente para {key}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error al actualizar el archivo .env: {e}")
+            return False
+
     def switch_to_local_db(self):
         """
         Cambiar la configuración para usar SQLite local.
@@ -252,6 +354,9 @@ class DatabaseBackupService:
             # Actualizar URL en variables de entorno (para próximos arranques)
             os.environ['SQLALCHEMY_DATABASE_URI'] = sqlite_url
             
+            # Actualizar el archivo .env con la nueva configuración
+            self._update_env_file('DATABASE_URL', sqlite_url)
+            
             # Actualizar conexiones (requiere reinicio completo de la aplicación)
             logger.info(f"Configuración cambiada a base de datos local: {self.local_db_path}")
             return True, f"Configuración cambiada a base de datos local: {self.local_db_path}"
@@ -276,6 +381,9 @@ class DatabaseBackupService:
             
             # Actualizar URL en variables de entorno (para próximos arranques)
             os.environ['SQLALCHEMY_DATABASE_URI'] = self.postgresql_url
+            
+            # Actualizar el archivo .env con la nueva configuración
+            self._update_env_file('DATABASE_URL', self.postgresql_url)
             
             # Actualizar conexiones (requiere reinicio completo de la aplicación)
             logger.info(f"Configuración cambiada a PostgreSQL")

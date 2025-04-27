@@ -77,7 +77,6 @@
   }
   .loading-spinner {
     display: none;
-    margin-left: 10px;
   }
   .btn-action:disabled {
     cursor: not-allowed;
@@ -212,7 +211,6 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-primary w-100 btn-action" id="btn-download">
               <i class="fas fa-cloud-download-alt me-2"></i>Descargar de Neon
-              <span class="spinner-border spinner-border-sm loading-spinner" id="download-spinner"></span>
             </button>
           </form>
         </div>
@@ -241,7 +239,6 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-success w-100 btn-action" id="btn-upload" {% if not db_info.exists and 'SQLite' in db_info.type %}disabled{% endif %}>
               <i class="fas fa-cloud-upload-alt me-2"></i>Subir a Neon
-              <span class="spinner-border spinner-border-sm loading-spinner" id="upload-spinner"></span>
             </button>
           </form>
         </div>
@@ -269,12 +266,10 @@
             <div class="d-grid gap-2">
               <button type="submit" class="btn btn-warning w-100 btn-action" id="btn-switch-local" {% if 'SQLite' in db_info.type %}disabled{% endif %}>
                 <i class="fas fa-database me-2"></i>Usar Base de Datos Local
-                <span class="spinner-border spinner-border-sm loading-spinner" id="switch-local-spinner"></span>
               </button>
               {% if 'SQLite' in db_info.type %}
-              <button type="button" class="btn btn-success w-100" id="btn-restart-after-local" onclick="reiniciarAplicacion()">
+              <button type="button" class="btn btn-success w-100" id="btn-restart-after-local" onclick="reiniciarAplicacionDirecto()">
                 <i class="fas fa-sync-alt me-2"></i>Reiniciar aplicación ahora
-                <span class="spinner-border spinner-border-sm loading-spinner" id="restart-local-spinner"></span>
               </button>
               {% endif %}
             </div>
@@ -304,12 +299,10 @@
             <div class="d-grid gap-2">
               <button type="submit" class="btn btn-info text-white w-100 btn-action" id="btn-switch-postgres" {% if not 'SQLite' in db_info.type %}disabled{% endif %}>
                 <i class="fas fa-cloud me-2"></i>Usar Base de Datos Neon
-                <span class="spinner-border spinner-border-sm loading-spinner" id="switch-postgres-spinner"></span>
               </button>
               {% if not 'SQLite' in db_info.type %}
-              <button type="button" class="btn btn-success w-100" id="btn-restart-after-remote" onclick="reiniciarAplicacion()">
+              <button type="button" class="btn btn-success w-100" id="btn-restart-after-remote" onclick="reiniciarAplicacionDirecto()">
                 <i class="fas fa-sync-alt me-2"></i>Reiniciar aplicación ahora
-                <span class="spinner-border spinner-border-sm loading-spinner" id="restart-remote-spinner"></span>
               </button>
               {% endif %}
             </div>
@@ -345,8 +338,13 @@
       const button = document.getElementById(buttonId);
       if (button) {
         button.disabled = false;
-        const spinner = button.querySelector('.loading-spinner');
-        if (spinner) spinner.style.display = 'none';
+        // Buscar el spinner asociado fuera del botón
+        const spinnerId = buttonId.replace('btn-', '') + '-spinner';
+        const spinner = document.getElementById(spinnerId);
+        if (spinner) {
+          // Ocultar explicitamente el spinner
+          spinner.style.display = 'none';
+        }
       }
     };
     
@@ -372,10 +370,11 @@
     // Función para descargar la base de datos
     window.descargarBaseDatos = function() {
     const btnDownload = document.getElementById('btn-download');
-    const spinner = btnDownload.querySelector('.loading-spinner');
+    const spinner = document.getElementById('download-spinner');
     
     // Mostrar spinner y deshabilitar botón
     btnDownload.disabled = true;
+    btnDownload.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>Procesando...';
     if (spinner) spinner.style.display = 'inline-block';
     
     // Crear FormData para la petición
@@ -399,15 +398,21 @@
         credentials: 'same-origin'
       })
       .then(response => {
+        console.log('Respuesta recibida del servidor:', response.status, response.statusText);
         if (response.ok) {
           return response.json();
         } else {
-          throw new Error('Error: ' + response.status + ' ' + response.statusText);
+          // Error en la respuesta
+          console.error('Error en la respuesta del servidor:', response.status, response.statusText);
+          throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
         }
       })
       .then(data => {
-        // Ocultar spinner explícitamente
-        hideSpinner('btn-download');
+        // Primero, ocultar el spinner
+        if (spinner) spinner.style.display = 'none';
+        // Luego restaurar el texto del botón sin incluir el spinner
+        btnDownload.disabled = false;
+        btnDownload.innerHTML = '<i class="fas fa-cloud-download-alt me-2"></i>Descargar de Neon';
         
         // Mostrar mensaje de éxito
         showTempMessage(data.message || "Base de datos descargada correctamente.");
@@ -418,8 +423,11 @@
       .catch(error => {
         console.error('Error:', error);
         
-        // Ocultar spinner explícitamente
-        hideSpinner('btn-download');
+        // Primero, ocultar el spinner
+        if (spinner) spinner.style.display = 'none';
+        // Luego restaurar el texto del botón sin incluir el spinner
+        btnDownload.disabled = false;
+        btnDownload.innerHTML = '<i class="fas fa-cloud-download-alt me-2"></i>Descargar de Neon';
         
         // Mostrar mensaje de error
         showTempMessage("Error al descargar la base de datos: " + error.message, "danger");
@@ -889,169 +897,50 @@
     }
     }
     
-    // Función para reiniciar la aplicación
-    window.reiniciarAplicacion = function() {
-      // Mostrar alerta de confirmación
-      if (!confirm('¿Estás seguro que deseas reiniciar la aplicación?\n\nEsto cerrará todas las conexiones activas y reiniciará el servidor.')) {
+    // Función para reiniciar la aplicación mediante recarga de página e indicaciones al usuario
+    window.reiniciarAplicacionDirecto = function() {
+      if (!confirm('¿Estás seguro que deseas reiniciar la aplicación?\n\nSe cerrará el servidor actual y deberás reiniciarlo manualmente.')) {
         return;
       }
       
-      // Mostrar spinners y deshabilitar botones de reinicio
-      document.querySelectorAll('#btn-restart-after-local, #btn-restart-after-remote').forEach(btn => {
-        // Encontrar el spinner asociado
-        const spinnerId = btn.id === 'btn-restart-after-local' ? 'restart-local-spinner' : 'restart-remote-spinner';
-        const spinner = document.getElementById(spinnerId);
-        
-        // Deshabilitar botón y mostrar spinner
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>Reiniciando...';
-        if (spinner) spinner.style.display = 'inline-block';
-      });
-      
-      // Crear overlay para bloquear interacción
-      const overlay = document.createElement('div');
-      overlay.style.position = 'fixed';
-      overlay.style.top = '0';
-      overlay.style.left = '0';
-      overlay.style.width = '100%';
-      overlay.style.height = '100%';
-      overlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
-      overlay.style.zIndex = '9999';
-      overlay.innerHTML = `
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;text-align:center;">
-          <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;" role="status"></div>
-          <h4>Reiniciando la aplicación</h4>
-          <p>Espere un momento mientras se reinicia el servidor...</p>
-          <div class="progress mt-3">
-            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%"></div>
+      // Crear mensaje en HTML para mostrar instrucciones claras
+      const contenidoHTML = `
+        <div style="background: rgba(0,0,0,0.85); position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                 display: flex; justify-content: center; align-items: center; z-index: 9999;">
+          <div style="background: white; max-width: 600px; border-radius: 10px; padding: 20px;">
+            <h2 style="color: #d9534f; margin-top: 0;">Reinicio manual requerido</h2>
+            <p>Para completar el cambio de base de datos, sigue estos pasos:</p>
+            <ol style="text-align: left; line-height: 1.6;">
+              <li>Cierra esta ventana del navegador</li>
+              <li>Detener la aplicación actual en la consola/terminal con Ctrl+C</li>
+              <li>Vuelve a ejecutar la aplicación con: <strong>python main.py</strong></li>
+              <li>Abre nuevamente el navegador en: <a href="http://localhost:5000" style="color: #428bca;">http://localhost:5000</a></li>
+            </ol>
+            <p style="margin-top: 15px;">Después de reiniciar, la aplicación usará la base de datos que seleccionaste.</p>
+            <div style="margin-top: 20px; text-align: right;">
+              <button onclick="window.location.reload()" style="padding: 8px 16px; background: #5bc0de; color: white; border: none; border-radius: 4px; margin-right: 10px;">Recargar página</button>
+              <button onclick="window.close()" style="padding: 8px 16px; background: #d9534f; color: white; border: none; border-radius: 4px;">Cerrar ventana</button>
+            </div>
           </div>
-          <p class="text-muted mt-3">La página se recargará automáticamente.</p>
         </div>
       `;
-      document.body.appendChild(overlay);
+
+      // Crear div contenedor
+      const instruccionesDiv = document.createElement('div');
+      instruccionesDiv.innerHTML = contenidoHTML;
+      document.body.appendChild(instruccionesDiv);
       
-      // Crear FormData para la petición de reinicio
-      const restartFormData = new FormData();
-      // Agregar el token CSRF (desde el input hidden)
-      const csrfElement = document.querySelector('input[name="csrf_token"]');
-      if (csrfElement) {
-          restartFormData.append('csrf_token', csrfElement.value);
-      } else {
-          // Fallback al valor del meta tag
-          const metaToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-          restartFormData.append('csrf_token', metaToken);
+      // Intentar detener el servidor
+      try {
+        // Añadir mensaje indicando que estamos intentando detener el servidor
+        console.log('Intentando detener el servidor...');
+        fetch('/stop', { method: 'POST' })
+          .then(response => console.log('Respuesta del servidor al detener:', response.status))
+          .catch(error => console.log('Error al intentar detener el servidor:', error));
+      } catch (e) {
+        console.log('Error al intentar detener el servidor:', e);
       }
-      
-      // Obtener token para enviar en cabecera también
-      const tokenToSend = csrfElement ? csrfElement.value : document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-      
-      // Enviar solicitud para reiniciar con doble protección CSRF
-      fetch('{{ url_for("db_manager.restart_app") }}', {
-        method: 'POST',
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRFToken': tokenToSend  // Añadir también como cabecera
-        },
-        body: restartFormData,
-        credentials: 'same-origin'
-      })
-      .then(response => {
-        if (response.ok) {
-          return response.json();
-        } else {
-          throw new Error('Error: ' + response.status + ' ' + response.statusText);
-        }
-      })
-      .then(data => {
-        // El reinicio ha sido iniciado con éxito
-        if (data.success) {
-          // Esperar un momento para dar tiempo a que se reinicie
-          setTimeout(() => {
-            // Modificar el overlay para mostrar progreso
-            overlay.innerHTML = `
-              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;text-align:center;">
-                <div class="spinner-border text-success mb-3" style="width:3rem;height:3rem;" role="status"></div>
-                <h4>Reinicio completado</h4>
-                <p>Intentando reconectar con el servidor...</p>
-                <div class="progress mt-3">
-                  <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" style="width:100%"></div>
-                </div>
-                <p class="text-muted mt-3">Si la página no se recarga automáticamente en 20 segundos, haga clic <a href="{{ url_for('db_manager.index') }}">aquí</a>.</p>
-              </div>
-            `;
-            
-            // Crear un temporizador para intentar recargar cada 2 segundos
-            let reconnectAttempts = 0;
-            const maxAttempts = 10;
-            const reconnectInterval = setInterval(() => {
-              reconnectAttempts++;
-              
-              // Intentar una conexión simple al servidor
-              fetch('{{ url_for("db_manager.db_status") }}', { method: 'HEAD' })
-                .then(() => {
-                  // Si tiene éxito, recargar la página
-                  clearInterval(reconnectInterval);
-                  window.location.reload();
-                })
-                .catch(() => {
-                  // Si falla y se superó el número máximo de intentos, mostrar mensaje
-                  if (reconnectAttempts >= maxAttempts) {
-                    clearInterval(reconnectInterval);
-                    overlay.innerHTML = `
-                      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;text-align:center;">
-                        <i class="fas fa-exclamation-circle text-warning mb-3" style="font-size:3rem;"></i>
-                        <h4>Tiempo de espera agotado</h4>
-                        <p>El servidor puede estar tardando más de lo esperado en reiniciarse.</p>
-                        <a href="{{ url_for('db_manager.index') }}" class="btn btn-primary mt-3">Intentar acceder de nuevo</a>
-                        <button class="btn btn-secondary mt-3 ms-2" onclick="document.body.removeChild(overlay);">Cerrar</button>
-                      </div>
-                    `;
-                  }
-                });
-            }, 2000);
-          }, 3000);
-        } else {
-          // Mostrar error
-          overlay.innerHTML = `
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;text-align:center;">
-              <i class="fas fa-times-circle text-danger mb-3" style="font-size:3rem;"></i>
-              <h4>Error al reiniciar</h4>
-              <p>${data.message || 'Error desconocido'}</p>
-              <button class="btn btn-secondary mt-3" onclick="document.body.removeChild(this.parentNode.parentNode.parentNode);">Cerrar</button>
-            </div>
-          `;
-          
-          // Restaurar botones
-          document.querySelectorAll('#btn-restart-after-local, #btn-restart-after-remote').forEach(btn => {
-            // Restaurar botón a su estado original
-            hideSpinner(btn.id);
-            btn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Reiniciar aplicación ahora';
-            btn.disabled = false;
-          });
-        }
-      })
-      .catch(error => {
-        console.error('Error al reiniciar la aplicación:', error);
-        
-        // Mostrar error en el overlay
-        overlay.innerHTML = `
-          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;text-align:center;">
-            <i class="fas fa-times-circle text-danger mb-3" style="font-size:3rem;"></i>
-            <h4>Error al reiniciar</h4>
-            <p>${error.message || 'Error desconocido'}</p>
-            <button class="btn btn-secondary mt-3" onclick="document.body.removeChild(this.parentNode.parentNode.parentNode);">Cerrar</button>
-          </div>
-        `;
-        
-        // Restaurar botones de reinicio
-        document.querySelectorAll('#btn-restart-after-local, #btn-restart-after-remote').forEach(btn => {
-          // Restaurar botón a su estado original
-          hideSpinner(btn.id);
-          btn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Reiniciar aplicación ahora';
-          btn.disabled = false;
-        });
-      });
-    }
-  });
+    };
+    });
 </script>
 {% endblock %}

@@ -16,15 +16,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Inicialización de extensiones con opciones mejoradas para PostgreSQL
+# Inicialización de extensiones con opciones optimizadas para SQLite
 db = SQLAlchemy(engine_options={
-    'pool_pre_ping': True,      # Verifica la conexión antes de usarla
-    'pool_recycle': 60,        # Reduce el tiempo de reciclaje a 1 minuto
-    'pool_timeout': 10,        # Reduce el tiempo límite de obtención de conexión
-    'pool_size': 10,           # Aumenta el tamaño del pool para mayor disponibilidad
-    'max_overflow': 20,        # Aumenta el máximo de conexiones adicionales
-    'echo': False,             # Desactiva el logging de SQL para mejorar rendimiento
-    'echo_pool': False         # Desactiva el logging de pool para mejorar rendimiento
+    'pool_pre_ping': True,     # Verifica la conexión antes de usarla
+    'pool_recycle': 3600,      # Recicla conexiones después de 1 hora
+    'pool_size': 5,            # Tamaño del pool para SQLite
+    'echo': False,            # Desactiva el logging de SQL para mejorar rendimiento
+    'echo_pool': False        # Desactiva el logging de pool para mejorar rendimiento
 })
 migrate = Migrate()
 csrf = CSRFProtect()
@@ -64,10 +62,6 @@ def create_app(config_name='default'):
     with app.app_context():
         from app.services.db_service import setup_db_optimizations
         setup_db_optimizations(app)
-        
-        # Inicializar servicio de backup de base de datos
-        from app.services.db_backup_service import db_backup_service
-        db_backup_service.init_app(app)
     
     # Inicializar la base de datos dentro del contexto de la aplicación
     with app.app_context():
