@@ -193,57 +193,21 @@
                                readonly>
                       </div>
                     </div>
-                    <!-- Campos de proveedor con contenedor completo -->
+                    <!-- Campos ocultos para mantener los valores de proveedor -->
+                    <input type="hidden" name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][id_proveedor]" value="{{ part.id_proveedor_principal }}">
+                    <input type="hidden" name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][precio_proveedor]" value="{{ part.precio_proveedor or 0 }}">
+                    
+                    <!-- Botón solo para borrar partida -->
                     <div class="row mt-2">
-                      <div class="col-md-6">
-                        <label class="form-label small-label">Proveedor principal</label>
-                        <select class="form-select proveedor-select"
-                                name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][id_proveedor]"
-                                id="proveedor_{{ chap_idx }}_{{ part_idx }}"
-                                data-partida-id="{{ part.id }}"
-                                data-proveedor-id="{{ part.id_proveedor_principal }}"
-                                title="Seleccione el proveedor principal">
-                          <option value="">Seleccione proveedor</option>
-                          <!-- Las opciones se cargarán por JavaScript -->
-                        </select>
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label small-label">Precio proveedor (€)</label>
-                        <div class="input-group">
-                          <input type="number" step="any" class="form-control proveedor-precio"
-                                name="capitulos[{{ chap_idx }}][partidas][{{ part_idx }}][precio_proveedor]"
-                                id="precio_proveedor_{{ chap_idx }}_{{ part_idx }}"
-                                value="{{ part.precio_proveedor or 0 }}"
-                                title="Precio del proveedor principal">
-                          <div class="input-group-append">
-                            <div class="input-group-text bg-light">
-                              <small>Margen Real: </small>
-                              <input type="text" class="border-0 bg-transparent margen-real-display"
-                                    style="width:60px;" readonly value="0.00">
-                              <small>%</small>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="col-12 mt-2 d-flex justify-content-between">
-                        <div>
-                          <button type="button" class="btn btn-sm btn-info btn-proveedores" title="Mostrar/ocultar proveedores"
-                                  data-partida-id="{{ part.id }}">
-                            Proveedores
-                          </button>
-                          <button type="button" class="btn btn-sm btn-secondary btn-proveedores-adicionales" title="Gestionar proveedores adicionales"
-                                  data-partida-id="{{ part.id }}">
-                            Proveedores Adicionales
-                          </button>
-                        </div>
+                      <div class="col-12 d-flex justify-content-end">
                         <button type="button" class="btn btn-sm btn-danger deletePartidaBtn" title="Borrar esta partida">
                           Borrar Partida
                         </button>
                       </div>
                     </div>
 
-                    <!-- Contenedor de proveedores inline -->
-                    <div class="proveedores-inline-container border-top mt-2 pt-2" style="display:none;" id="proveedores_container_{{ part.id }}">
+                    <!-- Contenedor de proveedores siempre visible -->
+                    <div class="proveedores-inline-container border-top mt-2 pt-2" id="proveedores_container_{{ part.id }}" data-partida-id="{{ part.id }}">
                       <h6 class="small fw-bold mb-2">Proveedores de esta partida</h6>
                       <div class="table-responsive">
                         <table class="table table-sm table-bordered">
@@ -450,53 +414,22 @@
                  readonly>
         </div>
       </div>
-      <!-- Campos de proveedor con contenedor completo -->
+      <!-- Campos ocultos para nuevas partidas -->
+      <input type="hidden" name="capitulos[${capIndex}][partidas][${partIndex}][id_proveedor]" value="">
+      <input type="hidden" name="capitulos[${capIndex}][partidas][${partIndex}][precio_proveedor]" value="0">
+      
+      <!-- Botón para borrar partida -->
       <div class="row mt-2">
-        <div class="col-md-6">
-          <label class="form-label small-label">Proveedor principal</label>
-          <select class="form-select proveedor-select"
-                  name="capitulos[${capIndex}][partidas][${partIndex}][id_proveedor]"
-                  id="proveedor_${capIndex}_${partIndex}"
-                  data-partida-id="0"
-                  title="Seleccione el proveedor principal" disabled>
-            <option value="">Seleccione proveedor</option>
-            <!-- Las opciones se cargarán por JavaScript -->
-          </select>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label small-label">Precio proveedor (€)</label>
-          <div class="input-group">
-            <input type="number" step="any" class="form-control proveedor-precio"
-                  name="capitulos[${capIndex}][partidas][${partIndex}][precio_proveedor]"
-                  id="precio_proveedor_${capIndex}_${partIndex}"
-                  value="0"
-                  title="Precio del proveedor principal" disabled>
-            <div class="input-group-append">
-              <div class="input-group-text bg-light">
-                <small>Margen Real: </small>
-                <input type="text" class="border-0 bg-transparent margen-real-display"
-                      style="width:60px;" readonly value="0.00">
-                <small>%</small>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-12 mt-2 d-flex justify-content-between">
-          <div>
-            <button type="button" class="btn btn-sm btn-info btn-proveedores" title="Mostrar/ocultar proveedores"
-                    data-partida-id="0" disabled>
-              Proveedores
-            </button>
-            <button type="button" class="btn btn-sm btn-secondary btn-proveedores-adicionales" title="Gestionar proveedores" 
-                    data-partida-id="0" disabled>
-              Proveedores Adicionales
-            </button>
-            <small class="text-muted">(Guardar primero para activar)</small>
-          </div>
+        <div class="col-12 d-flex justify-content-end">
           <button type="button" class="btn btn-sm btn-danger deletePartidaBtn" title="Borrar esta partida">
             Borrar Partida
           </button>
         </div>
+      </div>
+      
+      <!-- Mensaje para nuevas partidas -->
+      <div class="border-top mt-2 pt-2">
+        <p class="small text-muted">Guardar primero para gestionar proveedores.</p>
       </div>
     `;
     partidasContainer.appendChild(partDiv);

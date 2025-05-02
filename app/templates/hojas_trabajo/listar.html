@@ -1,0 +1,32 @@
+<!-- app/templates/hojas_trabajo/listar.html -->
+{% extends 'layout/base.html' %}
+{% from 'layout/components.html' import action_buttons, confirmation_modal %}
+
+{% block title %}AM3.1 - Hojas de Trabajo{% endblock %}
+
+{% block page_title %}
+    {% if id_presupuesto %}
+        Hojas de Trabajo del Presupuesto #{{ presupuesto.referencia }}
+    {% else %}
+        Listado de Hojas de Trabajo
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        {% if id_presupuesto %}
+            <a href="{{ url_for('hojas_trabajo.nueva_hoja', id_presupuesto=id_presupuesto) }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nueva Hoja de Trabajo
+            </a>
+            <a href="{{ url_for('presupuestos.editar_presupuesto', id=id_presupuesto) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver al Presupuesto
+            </a>
+        {% else %}
+            <a href="{{ url_for('proyectos.listar_proyectos') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Crear Nueva Hoja de Trabajo
+            </a>
+        {% endif %}
+    </div>
+    <div class="col-md-4">
+        <div class="input-group

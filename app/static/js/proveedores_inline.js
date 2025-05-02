@@ -4,36 +4,12 @@
 
 // Cuando el documento está listo
 document.addEventListener('DOMContentLoaded', function() {
-    // Configurar botones para mostrar/ocultar proveedores
-    document.querySelectorAll('.btn-proveedores').forEach(btn => {
-        btn.removeEventListener('click', window.location);
-        btn.setAttribute('onclick', '');
-        
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const partidaId = this.getAttribute('data-partida-id');
-            if (partidaId) {
-                toggleProveedoresContainer(partidaId);
-            }
-        });
-    });
-    
-    // También configurar botón secundario
-    document.querySelectorAll('.btn-proveedores-adicionales').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const partidaId = this.getAttribute('data-partida-id');
-            if (partidaId) {
-                const btnProveedores = this.closest('.partida').querySelector('.btn-proveedores');
-                if (btnProveedores) {
-                    toggleProveedoresContainer(partidaId);
-                }
-            }
-        });
+    // Cargar proveedores automáticamente para todas las partidas
+    document.querySelectorAll('.proveedores-inline-container').forEach(container => {
+        const partidaId = container.id.replace('proveedores_container_', '');
+        if (partidaId) {
+            cargarProveedoresPartida(partidaId);
+        }
     });
     
     // Calcular los márgenes reales iniciales
@@ -45,26 +21,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Función para mostrar/ocultar el contenedor de proveedores
+// Función para cargar el contenedor de proveedores (modificada para siempre visible)
 function toggleProveedoresContainer(partidaId) {
     const container = document.getElementById(`proveedores_container_${partidaId}`);
-    const button = document.querySelector(`.btn-proveedores[data-partida-id="${partidaId}"]`);
     
-    if (container && button) {
-        if (container.style.display === 'none' || !container.style.display) {
-            // Mostrar el contenedor
-            container.style.display = 'block';
-            button.classList.remove('btn-info');
-            button.classList.add('btn-primary');
-            
-            // Cargar los proveedores
-            cargarProveedoresPartida(partidaId);
-        } else {
-            // Ocultar el contenedor
-            container.style.display = 'none';
-            button.classList.remove('btn-primary');
-            button.classList.add('btn-info');
-        }
+    if (container) {
+        // Cargar los proveedores siempre
+        cargarProveedoresPartida(partidaId);
     }
 }
 
@@ -379,20 +342,20 @@ function eliminarProveedor(partidaId, proveedorPartidaId) {
 
 // Función para actualizar el proveedor principal en la partida
 function actualizarProveedorPrincipal(partidaId, proveedorId, precio) {
+    // Buscar los campos ocultos de proveedor principal en la partida
     const partida = document.querySelector(`.partida[data-partida-id="${partidaId}"]`);
     if (!partida) return;
     
-    // Actualizar el selector de proveedor principal
-    const proveedorSelect = partida.querySelector('.proveedor-select');
-    if (proveedorSelect) {
-        proveedorSelect.value = proveedorId;
+    // Actualizar los campos ocultos
+    const idProveedorInput = partida.querySelector('input[name*="[id_proveedor]"]');
+    const precioProveedorInput = partida.querySelector('input[name*="[precio_proveedor]"]');
+    
+    if (idProveedorInput) {
+        idProveedorInput.value = proveedorId;
     }
     
-    // Actualizar el precio del proveedor
-    const precioInput = partida.querySelector('.proveedor-precio');
-    if (precioInput) {
-        precioInput.value = precio || 0;
-        actualizarMargenReal(precioInput);
+    if (precioProveedorInput) {
+        precioProveedorInput.value = precio || 0;
     }
 }
 
